@@ -10,6 +10,8 @@
 library(shiny)
 library(dygraphs)
 library(DT)
+library(ggplot2)
+
 source('normalize.R')
 source('LSDD.R')
 source('LSDDsegmentation.R')
@@ -18,6 +20,8 @@ source('LSDDsegmentation.R')
 options(shiny.maxRequestSize = 50*1024^2)
 
 DEBUG_ON = T
+
+AD_GENERAL = 'AD2016_General'
 
 
 shinyServer(function(input, output, session) {
@@ -28,7 +32,7 @@ shinyServer(function(input, output, session) {
   
   
   # using reactive to dynamically import dataset
-  dataInput <- reactive({
+  dataInputRaw <- reactive({
     
     # get file from uploading
     if(!DEBUG_ON){
@@ -41,7 +45,7 @@ shinyServer(function(input, output, session) {
                quote=input$quote) )
     }else{
     # or debug deafult data
-      d <- data.frame( read.csv('./test100.csv'))  
+      d <- data.frame( read.csv('./test.csv'))  
     }
     
     if (input$normalizing){
@@ -51,11 +55,22 @@ shinyServer(function(input, output, session) {
     return(d)
   })
   
+  # remove all non-numeric columns
+  dataInput <- reactive({
+    d <- dataInputRaw()
+    d <- d[sapply(d, is.numeric)]
+    if (is.null(d)){
+      return()
+    }else{
+      return(d)
+    }
+  })
+  
 
   # data table with navigation tab
   # renderTable will kill the browser when the data is large
   output$table <- DT::renderDataTable({
-    d <- dataInput()
+    d <- dataInputRaw()
     
     if (is.null(d))
       return()
@@ -66,7 +81,7 @@ shinyServer(function(input, output, session) {
    
   # data summary
   output$summary <- renderPrint({
-    d <- dataInput()
+    d <- dataInputRaw()
     
     if (is.null(d))
       return()
@@ -88,7 +103,7 @@ shinyServer(function(input, output, session) {
         ||
         is.null(input$plotY)
         )
-      return(NULL)
+      return()
     
   
     
@@ -105,7 +120,9 @@ shinyServer(function(input, output, session) {
       target <- d[c(input$plotX,input$plotY)]
     }
     
-    dygraph(target, main = 'Selected variables')
+    dygraph(target
+            # , main = 'Selected variables'
+            )
       
     
 
@@ -132,7 +149,8 @@ shinyServer(function(input, output, session) {
       
       dop <- dygraphOutput(paste0("mplot_dygraph_", i))
       dop <- renderDygraph({
-        dygraph(target, main = i, group = 'mplot', width='1200')
+        dygraph(target, main = i, group = 'mplot') %>%
+          dyOptions(colors = "black")
       })
       result_div <- tagAppendChild(result_div, dop)
       
@@ -146,9 +164,12 @@ shinyServer(function(input, output, session) {
     if(is.null(inputY))
       return()
     
+    
+    result_div <- div()
+    
     lapply(inputY, function(i){
       
-      if(input$plotX == 'DataIndex'){
+      if(inputX == 'DataIndex'){
         DataIndex <- seq(from = 1, to = nrow(d))
         target <- cbind(DataIndex, d[i])
       }
@@ -160,8 +181,18 @@ shinyServer(function(input, output, session) {
       # dygraph(target, main = i, group = 'corplot') %>%
       #   dyOptions(strokeWidth = 0, drawPoints = T, pointSize = 5, fillAlpha = 0.3) %>%
       
-      plot(target)
-      abline(lm(target[, 2] ~ target[, 1]))
+      # plot(target)
+      # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
+      # ggplot(target)
+      dop <- plotOutput(paste0("corplot_ggplot_", i))
+      dop <- renderPlot({
+        ggplot(target, aes_string(x = inputX, y = i)) + 
+          geom_point() + 
+          geom_smooth(method = "lm", se = F) +
+          ggtitle(i)
+      })
+      
+      result_div <- tagAppendChild(result_div, dop)
       
     })
   }
@@ -196,7 +227,7 @@ shinyServer(function(input, output, session) {
     })
     
     # create dynamic numders of plots
-    output$corplot <- renderPlot({
+    output$corplot <- renderUI({
       get_corplot(d, input$plotX, input$plotY)
     })
     
@@ -212,102 +243,184 @@ shinyServer(function(input, output, session) {
     
   })
   
-  # reactive({
-  #   if(input$segplotButton){
-  #     cat('hi')
-  #   }
-  # })
-  # 
-  # segPlotting <- eventReactive(input$segbutton, {
-  #   # input$windowSize
-  #   plot(dataInput())
-  # })
-  
-  output$segplot <- renderPlot({
-    # segPlotting()
-    get_segplot()
-  })
-  
-  
-  output$segIndTabs <- renderUI({
-    segIndV <- input$segIndV
-    # if(!length(segIndV)){
-      # return()
-    segIndV <- c('ADGeneral',segIndV)
-    # }
-    tempTabs <- lapply(paste(segIndV, 'Setting'), function(i){
-      tabPanel(
-        i,
-        sliderInput(paste0(i,"WindowSize"), "Window Size input:",
-                    min = 1, max = 1000, value = 100),
-        
-        sliderInput(paste0(i, "Overlap"), "Overlap input:",
-                    min = 0, max = 1, value = 0.5),
-        
-        sliderInput(paste0(i, "Threshold"), "Threshold input:",
-                    min = 0, max = 1, value = 0.9),
-        
-        radioButtons(paste0(i, "Univariate"), "Variate type:",
-                     c("univariate" = 1,
-                       "multi-variate" = 0))
-        
-      )
-    })
-
-    do.call(tabBox, tempTabs)
-    # tempTabs()
-  })
-  
   
   ###################################################
   ################# Segment Tab #####################
   ###################################################
   
-  get_segparameters <- reactive({
-    # input$univariate <- ifelse(input$univariate == 1, TRUE, FALSE)
-    data.frame(
-      # TODO: individual parameters
-      general = c(
-        as.numeric(
-          c(input$windowSize,
-            input$overlap,
-            input$threshold,
-            input$univariate
+  output$segIndTabs <- renderUI({
+    segIndV <- input$segIndV
+    # if(!length(segIndV)){
+      # return()
+    # }
+    
+    # use AD prefix for general tab
+    # to void overplace data variables
+    # 
+    # create dynamical number of tabs
+    tempTabs <- lapply(c(AD_GENERAL, segIndV), function(i){
+      if(i == AD_GENERAL){
+        tempTitle = 'General'
+        tempUni =  c("univariate" = 1, "multi-variate" = 0)
+
+      }else{
+        tempTitle = i
+        tempUni = c("univariate" = 1)
+        
+      }
+      
+      tabPanel(
+        tempTitle,
+        fluidRow(
+          box(
+            width = 12,
+          
+            sliderInput(paste0(i,"WindowSize"), "Window Size input:",
+                        min = 1, max = 1000, value = 100),
+            
+            sliderInput(paste0(i, "Overlap"), "Overlap input:",
+                        min = 0, max = 1, value = 0.5),
+            
+            sliderInput(paste0(i, "Threshold"), "Threshold input:",
+                        min = 0, max = 1, value = 0.9),
+            
+            radioButtons(paste0(i, "Univariate"), "Variate type:",
+                         tempUni, inline = T
+            )
           )
         )
       )
+    })
+    args <- c(
+      tempTabs,
+      width = 8
     )
+    do.call("tabBox", args)
+    
+  })
+
+  # get parameters from the slider
+  get_segparameters <- reactive({
+    
+    segIndV <- input$segIndV
+    
+    rowNames <- c(
+      "WindowSize",
+      "Overlap",
+      "Threshold",
+      "Univariate"
+    )
+    
+    pars <- data.frame(
+      row.names = rowNames
+    )
+    
+    all <- c(AD_GENERAL, segIndV)
+    for(i in all){
+      for(j in rowNames){
+        pars[j,i] <- as.numeric(input[[paste0(i, j)]])
+      }
+    }
+    
+    pars
+  })
+  
+  output$segpars <- renderTable({
+    get_segtable()
+  })
+  
+  get_segtable <- eventReactive(input$segbutton, {
+    pars <- isolate(get_segparameters())
+    colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
+    # TODO remove excluding parameters from the table
+    pars <- pars[!colnames(pars) %in% input$segExcV]
+    pars
+  })
+  
+  output$segplot <- renderPlot({
+    get_segplot()
   })
   
   get_segplot <- eventReactive(input$segbutton, {
-    cat('segplot starts')
+    
+    # cat('segplot starts')
     
     # input$segplotButton
     # return a LSDD plot
-    temp <- isolate(get_segparameters())
+    pars <- isolate(get_segparameters())
     d <- isolate(dataInput())
-    
-    # remove all non-numeric columns by default
-    # TODO: show this message in the app
-    # input$segExcV <- colnames(d[sapply(d, !is.numeric)])
-    d <- d[sapply(d, is.numeric)]
     
     # also remove segExcV colums
     d <- d[setdiff(colnames(d),input$segExcV)]
     
-    # temp
-    # return('hi')
-    # return(input$windowSize)
-    # d
-    LSDDsegment(d,
-                windowSize=temp$general[1],
-                overlap=temp$general[2],
-                thres=temp$general[3],
-                LSDDparameters=FALSE,
-                univariate=temp$general[4])
+    par(mfrow=c(ncol(d),1), mar=c(0,0,0,0))
+    # apply LSDD to each of variable one by one
+    for(v in colnames(d)){
+      # if the variable is not individually defined
+      if(!(v %in% colnames(pars))){
+        par <- AD_GENERAL
+      }else{
+        par <- v
+      }
+      
+      LSDDResult<- LSDDsegment(d[v],
+                  windowSize=pars["WindowSize", par],
+                  overlap=pars["Overlap", par],
+                  thres=pars["Threshold", par],
+                  LSDDparameters=FALSE,
+                  univariate=pars["Univariate", par])
+
+      
+      # dygraph(data.frame(x=1:nrow(d), y=d[,v]), main = "") 
+      # %>%
+        # dyEvent("1950-6-30", "Korea", labelLoc = "bottom") %>%
+        # dyEvent(LSDDResult$segStart, color = 'blue')
+      plot(x=1:nrow(d), y=d[,v], type="l", 
+           xaxt="n", yaxt="n",
+           xlab="time series index", ylab=par, main="")
+      abline(v = LSDDResult$segStart, col="blue")
+      
+    }
     
-    # plot(d)
+    # and apply general setting for the rest variables
+    # dGeneral <- setdiff(colnames(d), colnames(pars))
+    # if(!length(dGeneral)){
+    #   dGeneral <- d[dGeneral]
+    #   
+    #   LSDDsegment(dGeneral,
+    #               windowSize=pars["WindowSize", AD_GENERAL],
+    #               overlap=pars["Overlap", AD_GENERAL],
+    #               thres=pars["Threshold", AD_GENERAL],
+    #               LSDDparameters=FALSE,
+    #               univariate=pars["Univariate", AD_GENERAL])
+    # }
+    
   })
+  
+  # disable and re-enable the button
+  observeEvent(input$segbutton, {
+    
+    # run external js
+    # to copy previous plot and info to the history
+    js$updateSeg()
+    
+    html("segbutton", "Running...")
+    disable("segbutton")
+    
+    delay(2000, {
+      html("segbutton", "Start")
+      enable("segbutton")
+    })
+  })
+  
+  observeEvent(input$segPrev, {
+    js$prevSeg()
+  })
+  
+  observeEvent(input$segNext, {
+    js$nextSeg()
+  })
+  
   
   
 })

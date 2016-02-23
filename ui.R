@@ -6,9 +6,58 @@
 #
 
 library(shiny)
+library(shinyjs)
 library(shinydashboard)
 library(DT)
 library(dygraphs)
+
+jsCode <- "
+shinyjs.statSeg = {
+  now: 0,
+  all: 0
+}
+shinyjs.updateSeg = function() {
+  
+  $('#segHistory').append(
+    $('<div/>')
+      .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
+      //.append('<p>all:' + shinyjs.statSeg.all)
+      //.append('<p>now:' + shinyjs.statSeg.now)
+      .append($('#segplot>img'))
+      .append($('#segpars>table'))
+  )
+  
+  // when click go, back to now
+  $('.segPiece').hide()
+  $('#segLatest').show()
+  
+  ++shinyjs.statSeg.all;
+  
+  $('#segLatest')
+    .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
+
+  shinyjs.statSeg.now = shinyjs.statSeg.all;
+}
+
+shinyjs.prevSeg = function() {
+  // panel 0 contains nothing
+  if(shinyjs.statSeg.now > 1){
+    shinyjs.statSeg.now -= 1 
+  }
+  shinyjs.showSeg(shinyjs.statSeg.now)
+}
+shinyjs.nextSeg = function() {
+  if(shinyjs.statSeg.now < shinyjs.statSeg.all) {
+    shinyjs.statSeg.now += 1 
+  }
+  shinyjs.showSeg(shinyjs.statSeg.now)
+}
+shinyjs.showSeg = function(i) {
+  $('.segPiece').hide()
+  $('.segPiece' + i).show()
+  
+}
+"
 
 dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
@@ -22,6 +71,9 @@ dashboardPage(
     )
   ),
   dashboardBody(
+    useShinyjs(),
+    # extend js
+    extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg")),
     tabItems(
       # First tab content
       tabItem(tabName = "general",
@@ -30,9 +82,7 @@ dashboardPage(
           box(
             width = 12,
             title = "Dataset option",
-            # sliderInput("slider", "Number of observations:", 1, 100, 50)
             
-  
             fluidRow(
               box(
                 width = 3,
@@ -88,7 +138,7 @@ dashboardPage(
       tabItem(tabName = 'plotting',
         fluidRow(
           box(
-            width = 6,
+            width = 8,
             selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T),
             selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F)
            
@@ -106,17 +156,10 @@ dashboardPage(
             width = 12,
             tabPanel("Plot", dygraphOutput("plot"))
             ,tabPanel("Multi-plot", uiOutput("mplot"))
-            ,tabPanel("Correlation", plotOutput("corplot"))
-            # tabPanel("Data Table", DT::dataTableOutput('table'))
+            ,tabPanel("Correlation", uiOutput("corplot"))
             
           )
-          # ,
           
-          # box(
-          #   width = 12,
-          #   title = 'Plot',
-          #   dygraphOutput("plot")
-          # )
         )
         
       ),
@@ -124,54 +167,69 @@ dashboardPage(
       
       tabItem(tabName = 'segmenting',
         
-        fluidRow(
-          box(
-            width = 12,
-            title = 'General settings',
-            
-            fluidRow(
-              box(
-                width = 6,
-                sliderInput("windowSize", "Window Size input:",
-                            min = 1, max = 1000, value = 100),
-                
-                sliderInput("overlap", "Overlap input:",
-                            min = 0, max = 1, value = 0.5),
-                
-                sliderInput("threshold", "Threshold input:",
-                            min = 0, max = 1, value = 0.9),
-                
-                radioButtons("univariate", "Variate type:",
-                             c("univariate" = 1,
-                               "multi-variate" = 0))
-              ),
-              box(
-                width = 6,
-                selectInput('segExcV', 'Excluding Variable(s)', choices = c('Please select a dataset'), multiple = T)
-                ,icon("info-circle"),"Select variable(s) to be excluded from segmentation."
-              ),
-              box(
-                width = 6,
-                selectInput('segIndV', 'Individually-tuned Variable(s)', choices = c('Please select a dataset'), multiple = T)
-                ,icon("info-circle"),"Select variable(s) to create an individual setting tab to tune parameters.")
-              )
-              
-            
-            
-          ),
-          
+        # fluidRow(
+        #   box(
+        #     width = 12,
+        #     title = 'General settings',
+        #     
+        #     fluidRow(
+        #       box(
+        #         width = 6,
+        #         sliderInput("windowSize", "Window Size input:",
+        #                     min = 1, max = 1000, value = 100),
+        #         
+        #         sliderInput("overlap", "Overlap input:",
+        #                     min = 0, max = 1, value = 0.5),
+        #         
+        #         sliderInput("threshold", "Threshold input:",
+        #                     min = 0, max = 1, value = 0.9),
+        #         
+        #         radioButtons("univariate", "Variate type:",
+        #                      c("univariate" = 1,
+        #                        "multi-variate" = 0))
+        #       ),
+        fluidRow(  
           uiOutput('segIndTabs'),
           
-          
-          actionButton('segbutton', 'Start Segmenting'),
+          box(
+            width = 4,
+            selectInput('segExcV', 'Excluding Variable(s)', choices = c('Please select a dataset'), multiple = T)
+            ,icon("info-circle"),"Select variable(s) to be excluded from segmentation."
+          ),
+          box(
+            width = 4,
+            selectInput('segIndV', 'Individual Setting', choices = c('Please select a dataset'), multiple = T)
+            ,icon("info-circle"),"Create an individual setting tab for each variable selected."
+          ),
+              
           
           box(
-            title = 'Plot',
+            width = 4,
+            actionButton('segbutton', 'Start')
+          ),
+          
+          # Plot
+          box(
+            title = 'Plots',
             width = '12',
-           
             
-            plotOutput("segplot")
-            # verbatimTextOutput("segplot")
+            box(
+              width = 12,
+              actionButton("segPrev", label = "", icon = icon("arrow-left")),
+              actionButton("segNext", label = "", icon = icon("arrow-right"))
+            ),
+            
+            # tabPanel('Now',
+            box(
+              id = "segHistory",
+              width = 12,
+              div(
+                id="segLatest",
+                
+                plotOutput("segplot"),
+                tableOutput("segpars")
+              )
+            )
           )
         )
       )
