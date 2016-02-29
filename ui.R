@@ -16,21 +16,26 @@ shinyjs.statSeg = {
   now: 0,
   all: 0
 }
+
 shinyjs.updateSeg = function() {
   
+  var info = $('#segplot>img').length ? $('#segplot>img') : $('<div/>')
+                .append($('#segplot').html())
+                .attr('class', 'shiny-plot-output shiny-bound-output shiny-output-error');
+
   $('#segHistory').append(
     $('<div/>')
       .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
       //.append('<p>all:' + shinyjs.statSeg.all)
       //.append('<p>now:' + shinyjs.statSeg.now)
-      .append($('#segplot>img'))
+      .append(info)
       .append($('#segpars>table'))
   )
   
   // when click go, back to now
   $('.segPiece').hide()
   $('#segLatest').show()
-  
+
   ++shinyjs.statSeg.all;
   
   $('#segLatest')
@@ -55,7 +60,6 @@ shinyjs.nextSeg = function() {
 shinyjs.showSeg = function(i) {
   $('.segPiece').hide()
   $('.segPiece' + i).show()
-  
 }
 "
 
@@ -147,7 +151,7 @@ dashboardPage(
             # 
             # 
             # actionButton("plotButton", "Plot"),
-            # actionButton("mplotButton", "Multi-plot"),
+            # actionButton("mulplotButton", "Multi-plot"),
             # actionButton("corButton", "Correlation")
             # 
           ),
@@ -155,7 +159,7 @@ dashboardPage(
           tabBox(
             width = 12,
             tabPanel("Plot", dygraphOutput("plot"))
-            ,tabPanel("Multi-plot", uiOutput("mplot"))
+            ,tabPanel("Multi-plot", uiOutput("mulplot"))
             ,tabPanel("Correlation", uiOutput("corplot"))
             
           )
@@ -225,8 +229,7 @@ dashboardPage(
               width = 12,
               div(
                 id="segLatest",
-                
-                plotOutput("segplot"),
+                plotOutput("segplot", width = "100%", height = "800px"),
                 tableOutput("segpars")
               )
             )

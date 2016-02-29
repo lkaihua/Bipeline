@@ -15,6 +15,7 @@ library(ggplot2)
 source('normalize.R')
 source('LSDD.R')
 source('LSDDsegmentation.R')
+source('segSize.R')
 
 # change maximum file size from 5MB to 50MB
 options(shiny.maxRequestSize = 50*1024^2)
@@ -45,7 +46,7 @@ shinyServer(function(input, output, session) {
                quote=input$quote) )
     }else{
     # or debug deafult data
-      d <- data.frame( read.csv('./test.csv'))  
+      d <- data.frame( read.csv('./test5000.csv'))  
     }
     
     if (input$normalizing){
@@ -130,7 +131,7 @@ shinyServer(function(input, output, session) {
   
   
   # multi plot
-  get_mplot <- function(d, inputX, inputY) {
+  get_mulplot <- function(d, inputX, inputY) {
     if(is.null(inputY))
       return()
     # cat('hi')
@@ -147,12 +148,16 @@ shinyServer(function(input, output, session) {
       }
       
       
-      dop <- dygraphOutput(paste0("mplot_dygraph_", i))
-      dop <- renderDygraph({
-        dygraph(target, main = i, group = 'mplot') %>%
-          dyOptions(colors = "black")
+      tempName <- paste0("mulplot_dygraph_", i)
+      output[[tempName]] <- renderDygraph({
+        dygraph(target, main = i, group = 'mulplot') %>%
+          dyOptions(colors = "#131688")
       })
-      result_div <- tagAppendChild(result_div, dop)
+      dopOut <- dygraphOutput(tempName, width = "100%", height = "300px")
+      # dopOut <- tagAppendChild(dopOut, dop)
+      # dop <- dygraphOutput(dop, width = "200px", height = "200px")
+      # dopOut <- tagAppendChild(dopOut, dop)
+      result_div <- tagAppendChild(result_div, dopOut)
       
     
     })
@@ -163,7 +168,6 @@ shinyServer(function(input, output, session) {
   get_corplot <- function(d, inputX, inputY) {
     if(is.null(inputY))
       return()
-    
     
     result_div <- div()
     
@@ -184,14 +188,17 @@ shinyServer(function(input, output, session) {
       # plot(target)
       # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
       # ggplot(target)
-      dop <- plotOutput(paste0("corplot_ggplot_", i))
-      dop <- renderPlot({
+      tempName <- paste0("corplot_ggplot_", i)
+      
+      output[[tempName]] <- renderPlot({
         ggplot(target, aes_string(x = inputX, y = i)) + 
           geom_point() + 
           geom_smooth(method = "lm", se = F) +
           ggtitle(i)
       })
       
+      dop <- plotOutput(tempName, width = "100%", height = "300px")
+
       result_div <- tagAppendChild(result_div, dop)
       
     })
@@ -208,22 +215,12 @@ shinyServer(function(input, output, session) {
     dCol <- colnames(d)
     
     ############## plot tab ############## 
-    updateSelectInput(session, "plotY",
-                      # label = paste("Select label", dCol),
-                      choices = dCol
-                      # selected = sprintf("option-%d-2", x)
-    )
+    updateSelectInput(session, "plotY", choices = dCol)
+    updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
     
-    updateSelectInput(session, "plotX",
-                      # label = paste("Select label", dCol),
-                      choices = c("DataIndex", dCol)
-                      # selected = sprintf("option-%d-2", x)
-    )
-    
-   
     # create dynamic numders of plots
-    output$mplot <- renderUI({
-      get_mplot(d, input$plotX, input$plotY)
+    output$mulplot <- renderUI({
+      get_mulplot(d, input$plotX, input$plotY)
     })
     
     # create dynamic numders of plots
@@ -236,9 +233,7 @@ shinyServer(function(input, output, session) {
     updateSelectInput(session, "segIndV", choices = dCol)
     
     
-    # limit the size of the window smaller than the size of all data
-    # update: put a warning will be better in trycatch block
-    # updateSelectInput(session, "segExcludingV", choices = dCol)
+    # TODO: limit the size of the window smaller than the size of all data
     
     
   })
@@ -343,6 +338,14 @@ shinyServer(function(input, output, session) {
   
   get_segplot <- eventReactive(input$segbutton, {
     
+    segLSDDPars <- data.frame(
+      row.names = c('sigma','lambda')
+    )
+    segLSDDUnion <- c()
+    # LSDDUnion <- data.frame(
+    #   col.names = c('start', 'end')
+    # )
+    
     # cat('segplot starts')
     
     # input$segplotButton
@@ -353,7 +356,7 @@ shinyServer(function(input, output, session) {
     # also remove segExcV colums
     d <- d[setdiff(colnames(d),input$segExcV)]
     
-    par(mfrow=c(ncol(d),1), mar=c(0,0,0,0))
+    par(mfrow=c(ncol(d) + 1,1), mar=c(0,0,0,0))
     # apply LSDD to each of variable one by one
     for(v in colnames(d)){
       # if the variable is not individually defined
@@ -367,9 +370,8 @@ shinyServer(function(input, output, session) {
                   windowSize=pars["WindowSize", par],
                   overlap=pars["Overlap", par],
                   thres=pars["Threshold", par],
-                  LSDDparameters=FALSE,
+                  LSDDparameters=T,
                   univariate=pars["Univariate", par])
-
       
       # dygraph(data.frame(x=1:nrow(d), y=d[,v]), main = "") 
       # %>%
@@ -379,7 +381,15 @@ shinyServer(function(input, output, session) {
            xaxt="n", yaxt="n",
            xlab="time series index", ylab=par, main="")
       abline(v = LSDDResult$segStart, col="blue")
+      abline(v = tail(LSDDResult$segEnd, 1), col="blue")
       
+      # normally: thisEnd == nextStart - 1 , or == endOfAll
+      # so no need to print end event line since they are distracting
+      # abline(v = LSDDResult$segEnd, col="red")
+      
+      segLSDDPars[v] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
+      segLSDDUnion <- c(segLSDDUnion, LSDDResult$segStart)
+
     }
     
     # and apply general setting for the rest variables
@@ -395,6 +405,35 @@ shinyServer(function(input, output, session) {
     #               univariate=pars["Univariate", AD_GENERAL])
     # }
     
+    segLSDDUnion <- sort(unique(segLSDDUnion))
+    # put the end
+    # cat(segLSDDUnion)
+    
+    # after we have all seg line
+    # check MinSegSize
+    # if less than the throttle, merge it
+    segResults <- data.frame(
+      start = segLSDDUnion,
+      end = tail(c(segLSDDUnion - 1, nrow(d)), -1)
+      # col.names = c("start", "end")
+    )
+    
+
+    newSeg <- segSize(data = d, 
+                          segResults = segResults, 
+                          segLSDDPars = segLSDDPars, 
+                          throttle = 100
+                        )
+    
+    plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n", 
+         xaxt="n", yaxt="n",
+         xlab="time series index", ylab=par, main="")
+    # new segment event line
+    abline(v = newSeg$start, col="blue")
+    abline(v = nrow(d), col="blue")
+    # dotted merged event line
+    abline(v = setdiff(segLSDDUnion, newSeg$start), col="red", lty = 3)
+    
   })
   
   # disable and re-enable the button
@@ -404,9 +443,12 @@ shinyServer(function(input, output, session) {
     # to copy previous plot and info to the history
     js$updateSeg()
     
+    # disable button for 2s to prevent multiple time application
     html("segbutton", "Running...")
     disable("segbutton")
     
+    # it looks like this 2000ms will make sure 
+    # the button is unclickable until the server is not busy
     delay(2000, {
       html("segbutton", "Start")
       enable("segbutton")
