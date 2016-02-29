@@ -11,61 +11,19 @@ library(shinydashboard)
 library(DT)
 library(dygraphs)
 
-jsCode <- "
-shinyjs.statSeg = {
-  now: 0,
-  all: 0
-}
-
-shinyjs.updateSeg = function() {
-  
-  var info = $('#segplot>img').length ? $('#segplot>img') : $('<div/>')
-                .append($('#segplot').html())
-                .attr('class', 'shiny-plot-output shiny-bound-output shiny-output-error');
-
-  $('#segHistory').append(
-    $('<div/>')
-      .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
-      //.append('<p>all:' + shinyjs.statSeg.all)
-      //.append('<p>now:' + shinyjs.statSeg.now)
-      .append(info)
-      .append($('#segpars>table'))
-  )
-  
-  // when click go, back to now
-  $('.segPiece').hide()
-  $('#segLatest').show()
-
-  ++shinyjs.statSeg.all;
-  
-  $('#segLatest')
-    .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
-
-  shinyjs.statSeg.now = shinyjs.statSeg.all;
-}
-
-shinyjs.prevSeg = function() {
-  // panel 0 contains nothing
-  if(shinyjs.statSeg.now > 1){
-    shinyjs.statSeg.now -= 1 
-  }
-  shinyjs.showSeg(shinyjs.statSeg.now)
-}
-shinyjs.nextSeg = function() {
-  if(shinyjs.statSeg.now < shinyjs.statSeg.all) {
-    shinyjs.statSeg.now += 1 
-  }
-  shinyjs.showSeg(shinyjs.statSeg.now)
-}
-shinyjs.showSeg = function(i) {
-  $('.segPiece').hide()
-  $('.segPiece' + i).show()
-}
-"
+# read external js 
+fileName <- "shinyjsSeg.js"
+# readLines import file asynchronously and fails shinyjs
+# jsCode <- paste(readLines("./shinyjsSeg.js"), collapse=" ")
+jsCode <- readChar(fileName, file.info(fileName)$size)
 
 dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
   dashboardSidebar(
+    shinyjs::inlineCSS(list(
+      ".sidebar-menu>li" = "font-size: 18px",
+      ".sidebar-menu>li>a>.fa" = "width: 30px"
+    )),
     sidebarMenu(
       menuItem("General", tabName = "general", icon = icon("dashboard")),
       menuItem("Plotting", tabName = "plotting", icon = icon("bar-chart")),
@@ -129,10 +87,10 @@ dashboardPage(
           
           tabBox(
             width = 12,
-            tabPanel("Summary", verbatimTextOutput("summary")),
-            # tabPanel("Data Table", tableOutput("table"))
-            tabPanel("Data Table", DT::dataTableOutput('table'))
             
+            # tabPanel("Data Table", tableOutput("table"))
+            tabPanel("Data Table", DT::dataTableOutput('table')),
+            tabPanel("Summary", verbatimTextOutput("summary"))
           )
         )
       ),
@@ -214,22 +172,26 @@ dashboardPage(
           
           # Plot
           box(
-            title = 'Plots',
-            width = '12',
+            width = 12,
             
-            box(
-              width = 12,
+            div(
+              class="box-header",
+              h3(
+                class="box-title", 
+                style="padding-right: 10px",
+                'Plots'
+              ),
               actionButton("segPrev", label = "", icon = icon("arrow-left")),
               actionButton("segNext", label = "", icon = icon("arrow-right"))
             ),
             
             # tabPanel('Now',
-            box(
+            div(
               id = "segHistory",
               width = 12,
               div(
                 id="segLatest",
-                plotOutput("segplot", width = "100%", height = "800px"),
+                plotOutput("segplot", width = "100%", height = "700px"),
                 tableOutput("segpars")
               )
             )

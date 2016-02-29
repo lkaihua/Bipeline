@@ -121,7 +121,7 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   }else{
     # this is equal, very rare situation
     # merge with shorter segResults
-    if(length(Lmatrix) <= length(Rmatrix)){
+    if(length(Lmatrix) < length(Rmatrix)){
       # return('left')
     }
     else{

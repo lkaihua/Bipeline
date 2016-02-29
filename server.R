@@ -20,7 +20,7 @@ source('segSize.R')
 # change maximum file size from 5MB to 50MB
 options(shiny.maxRequestSize = 50*1024^2)
 
-DEBUG_ON = T
+DEBUG_ON = F
 
 AD_GENERAL = 'AD2016_General'
 
@@ -462,6 +462,7 @@ shinyServer(function(input, output, session) {
   observeEvent(input$segNext, {
     js$nextSeg()
   })
+  
   
   
   
