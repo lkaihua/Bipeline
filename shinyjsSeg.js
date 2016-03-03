@@ -74,9 +74,11 @@ shinyjs.showSeg = function(i) {
     else if(i == 1){
       shinyjs.disable('segPrev')
       shinyjs.enable('segNext')
-    }else{
+    }
+    else{
       shinyjs.enable('segPrev')
       shinyjs.enable('segNext')
     }
   }
 }
+

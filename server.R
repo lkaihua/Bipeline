@@ -5,8 +5,6 @@
 # http://shiny.rstudio.com
 #
 
-
-
 library(shiny)
 library(dygraphs)
 library(DT)
@@ -20,15 +18,17 @@ source('segSize.R')
 # change maximum file size from 5MB to 50MB
 options(shiny.maxRequestSize = 50*1024^2)
 
-DEBUG_ON = F
-
+# global settings
+DEBUG_ON = T
 AD_GENERAL = 'AD2016_General'
-
 
 shinyServer(function(input, output, session) {
   
+  # session data storage
+  v <- reactiveValues()
+
   ###################################################
-  ################# General Tab  ####################
+  ################# Import Tab  ####################
   ###################################################
   
   
@@ -42,35 +42,41 @@ shinyServer(function(input, output, session) {
       if (is.null(inFile))
         return(NULL)
   
-      d <- data.frame( read.csv(inFile$datapath, header=input$header, sep=input$sep,
-               quote=input$quote) )
+      d <- data.frame( 
+            read.csv(
+              inFile$datapath, 
+              header=input$header, 
+              sep=input$sep,
+              quote=input$quote))
     }else{
     # or debug deafult data
       d <- data.frame( read.csv('./test5000.csv'))  
     }
     
-    if (input$normalizing){
-      d <- normalizeTS(d)
-    }
+    # dataFinal <- d
+    v$raw <- d
     
-    return(d)
-  })
-  
-  # remove all non-numeric columns
-  dataInput <- reactive({
-    d <- dataInputRaw()
+    # remove all non-numeric columns
     d <- d[sapply(d, is.numeric)]
-    if (is.null(d)){
-      return()
-    }else{
-      return(d)
+    
+    if (
+      is.null(d)
+      || ncol(d) == 0
+    ){
+      v$data <- NULL
     }
-  })
+    else{
+      v$data <- d  
+    }
   
+    # return rawData for display
+    return(v$raw)
+  })
+
 
   # data table with navigation tab
   # renderTable will kill the browser when the data is large
-  output$table <- DT::renderDataTable({
+  output$rawTable <- DT::renderDataTable({
     d <- dataInputRaw()
     
     if (is.null(d))
@@ -81,7 +87,7 @@ shinyServer(function(input, output, session) {
     
    
   # data summary
-  output$summary <- renderPrint({
+  output$rawSummary <- renderPrint({
     d <- dataInputRaw()
     
     if (is.null(d))
@@ -91,6 +97,92 @@ shinyServer(function(input, output, session) {
   })
   
   ###################################################
+  ################# Import Tab  ####################
+  ###################################################
+
+  # dataInput <- reactive({
+  # 
+  #   d <- dataInputRaw()
+  # 
+  #   # remove all non-numeric columns
+  #   d <- d[sapply(d, is.numeric)]
+  # 
+  #   if (
+  #     is.null(d)
+  #     || ncol(d) == 0
+  #   ){
+  #     return()
+  #   }
+  # 
+  #   # if (input$rangeButton) {
+  #   #   # see what's the limitage
+  #   #   tempVars <- input$variableRange
+  #   #   for(tempVar in tempVars){
+  #   #     tempMin <- input[[paste0("rangeMin", tempVar)]]
+  #   #     tempMax <- input[[paste0("rangeMax", tempVar)]]
+  #   #
+  #   #     # keep all value within range
+  #   #     # TODO: there are a few more options
+  #   #     d[d[tempVar] < tempMin, tempVar] <- tempMin
+  #   #     d[d[tempVar] > tempMax, tempVar] <- tempMax
+  #   #   }
+  #   # }
+  # 
+  # 
+  #   return(d)
+  # 
+  # })
+  
+
+  
+  ###################################################
+  ################# Pre-processing Tab ##############
+  ###################################################
+  
+  # click go button for normalizing
+  observeEvent(input$goNormalizing, {
+    if(input$normalizing){
+      # record the maximum for all varaibles to recover
+      
+      v$dataMax <- sapply(colnames(v$data),function(i){
+        max(v$data[i])
+      })
+      v$dataMin <- sapply(colnames(v$data),function(i){
+        min(v$data[i])
+      })
+      # print(dataMax)
+      v$data <- normalizeTS(v$data)
+    }
+    else{
+      # recover by multipling the max values and min
+      if(!is.null(v$dataMax)){
+        for(i in colnames(v$data)){
+          v$data[i] <- v$data[i] * (v$dataMax[i] - v$dataMin[i]) + v$dataMin[i]
+        }
+      }
+      v$data
+      
+    }
+  })
+
+  # data preview
+  output$inputTable <- DT::renderDataTable({
+    # d <- dataInput()
+    d <- v$data
+    if (is.null(d))
+      return()
+    DT::datatable(d, options = list(pageLength = 10))
+  })
+ 
+  output$inputSummary <- renderPrint({
+    d <- v$data
+    if (is.null(d))
+      return()
+    summary(d)
+  })
+  
+  
+  ###################################################
   ################# Plot Tab ########################
   ###################################################
   output$plot <- renderDygraph({
@@ -98,7 +190,7 @@ shinyServer(function(input, output, session) {
     # dependency
     # input$plot
   
-    d <- dataInput()
+    d <- v$data
     
     if (is.null(d)
         ||
@@ -121,9 +213,7 @@ shinyServer(function(input, output, session) {
       target <- d[c(input$plotX,input$plotY)]
     }
     
-    dygraph(target
-            # , main = 'Selected variables'
-            )
+    dygraph(target)
       
     
 
@@ -147,21 +237,27 @@ shinyServer(function(input, output, session) {
         target <- d[c(inputX,i)]
       }
       
-      
+      # 1. create a container
+      #     <div result/>
+      #         <div for dygraph1/>
+      #         <div for dygraph2/>
+      #
+      # 2. define output$dygraph1, output$dygraph2
       tempName <- paste0("mulplot_dygraph_", i)
-      output[[tempName]] <- renderDygraph({
-        dygraph(target, main = i, group = 'mulplot') %>%
-          dyOptions(colors = "#131688")
-      })
+      
       dopOut <- dygraphOutput(tempName, width = "100%", height = "300px")
       # dopOut <- tagAppendChild(dopOut, dop)
       # dop <- dygraphOutput(dop, width = "200px", height = "200px")
       # dopOut <- tagAppendChild(dopOut, dop)
       result_div <- tagAppendChild(result_div, dopOut)
       
+      output[[tempName]] <- renderDygraph({
+        dygraph(target, main = i, group = 'mulplot') %>%
+          dyOptions(colors = "#131688")
+      })
     
     })
-    
+
   }
   
   # correlation plot
@@ -189,7 +285,9 @@ shinyServer(function(input, output, session) {
       # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
       # ggplot(target)
       tempName <- paste0("corplot_ggplot_", i)
-      
+      dop <- plotOutput(tempName, width = "100%", height = "300px")
+      result_div <- tagAppendChild(result_div, dop)
+
       output[[tempName]] <- renderPlot({
         ggplot(target, aes_string(x = inputX, y = i)) + 
           geom_point() + 
@@ -197,46 +295,9 @@ shinyServer(function(input, output, session) {
           ggtitle(i)
       })
       
-      dop <- plotOutput(tempName, width = "100%", height = "300px")
-
-      result_div <- tagAppendChild(result_div, dop)
-      
     })
   }
-  
-  
-  #########################################################
-  ############## update when the input changes  ###########
-  #########################################################
-  observe({
-    
-    # when data is imported
-    d <- dataInput()
-    dCol <- colnames(d)
-    
-    ############## plot tab ############## 
-    updateSelectInput(session, "plotY", choices = dCol)
-    updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
-    
-    # create dynamic numders of plots
-    output$mulplot <- renderUI({
-      get_mulplot(d, input$plotX, input$plotY)
-    })
-    
-    # create dynamic numders of plots
-    output$corplot <- renderUI({
-      get_corplot(d, input$plotX, input$plotY)
-    })
-    
-    ############## seg tab ############## 
-    updateSelectInput(session, "segExcV", choices = dCol)
-    updateSelectInput(session, "segIndV", choices = dCol)
-    
-    
-    # TODO: limit the size of the window smaller than the size of all data
-    
-    
-  })
+
   
   
   ###################################################
@@ -280,8 +341,7 @@ shinyServer(function(input, output, session) {
                         min = 0, max = 1, value = 0.9),
             
             radioButtons(paste0(i, "Univariate"), "Variate type:",
-                         tempUni, inline = T
-            )
+                         tempUni, inline = T)
           )
         )
       )
@@ -351,7 +411,7 @@ shinyServer(function(input, output, session) {
     # input$segplotButton
     # return a LSDD plot
     pars <- isolate(get_segparameters())
-    d <- isolate(dataInput())
+    d <- isolate(v$data)
     
     # also remove segExcV colums
     d <- d[setdiff(colnames(d),input$segExcV)]
@@ -436,6 +496,8 @@ shinyServer(function(input, output, session) {
     
   })
   
+  #########################################################
+  ############ observe button
   # disable and re-enable the button
   observeEvent(input$segbutton, {
     
@@ -464,6 +526,40 @@ shinyServer(function(input, output, session) {
   })
   
   
-  
+  #########################################################
+  ############# observe
+  observe({
+    
+    # when data is imported
+    d <- v$data
+    
+    dCol <- colnames(d)
+    
+    ############## pre-processing ########
+    # updateSelectInput(session, "variableRange", choices = dCol)
+    
+    ############## plot tab ############## 
+    updateSelectInput(session, "plotY", choices = dCol)
+    updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
+    
+    # create dynamic numders of plots
+    output$mulplot <- renderUI({
+      get_mulplot(d, input$plotX, input$plotY)
+    })
+    
+    # create dynamic numders of plots
+    output$corplot <- renderUI({
+      get_corplot(d, input$plotX, input$plotY)
+    })
+    
+    ############## seg tab ############## 
+    updateSelectInput(session, "segExcV", choices = dCol)
+    updateSelectInput(session, "segIndV", choices = dCol)
+    
+    
+    # TODO: limit the size of the window smaller than the size of all data
+    
+    
+  })
   
 })

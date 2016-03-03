@@ -20,12 +20,14 @@ jsCode <- readChar(fileName, file.info(fileName)$size)
 dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
   dashboardSidebar(
+    # change dashboard sidebar appearance
     shinyjs::inlineCSS(list(
       ".sidebar-menu>li" = "font-size: 18px",
       ".sidebar-menu>li>a>.fa" = "width: 30px"
     )),
     sidebarMenu(
-      menuItem("General", tabName = "general", icon = icon("dashboard")),
+      menuItem("Import", tabName = "import", icon = icon("file-o")),
+      menuItem("Pre-processing", tabName = "preprocessing", icon = icon("cogs")),
       menuItem("Plotting", tabName = "plotting", icon = icon("bar-chart")),
       menuItem("Segmenting", tabName = "segmenting", icon = icon("columns")),
       menuItem("Biclustering", tabName = "biclustering", icon = icon("th")),
@@ -38,12 +40,13 @@ dashboardPage(
     extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg")),
     tabItems(
       # First tab content
-      tabItem(tabName = "general",
+      tabItem(
+        tabName = "import",
         fluidRow(
         
           box(
             width = 12,
-            title = "Dataset option",
+            title = "Upload",
             
             fluidRow(
               box(
@@ -66,41 +69,93 @@ dashboardPage(
                 width = 3,
                 checkboxInput('header', 'Header', TRUE)
                 
-              ),
+              )
+              
+            ),
+            
+            fluidRow(
               box(
-                width = 3,
-                checkboxInput('normalizing', 'Normalizing', TRUE)
+                width = 12,
+                fileInput('file1', 'Choose CSV File',
+                          accept=c('text/csv',
+                                   'text/comma-separated-values,text/plain',
+                                   '.csv'))
               )
             )
           ),
           
           
-          box(
+          
+          # allow x-flow for DT:dataTable
+          shinyjs::inlineCSS(list(
+            ".dataTables_wrapper" = "overflow-x: scroll"
+          )),
+          
+          tabBox(
             width = 12,
-            title = "Upload",
+           # tabPanel("Data Table", tableOutput("table"))
+            tabPanel("Raw Data", DT::dataTableOutput('rawTable')),
+            tabPanel("Summary", verbatimTextOutput("rawSummary"))
+          )
+        )
+      ),
+      # </import>
+      
+      tabItem(
+        tabName = 'preprocessing',
+        fluidRow(
+          box(
+            width = 3,
+            title = "Normalization",
+            checkboxInput('normalizing', 'Normalizing', FALSE),
+            actionButton('goNormalizing', 'Go')
+          ),
+          
+          box(
+            width = 3,
+            title = "Conditions",
+            p('If'),
+            selectInput('variableCon', '', choices = c('Please select a dataset'), multiple = F),
+            selectInput('equalCon', '', choices = c('==','>=','<=','>','<'), multiple = F),
+            p('Then'),
+            selectInput('actionCon', '', choices = c('Remove line','Replace with'), multiple = F),
+            actionButton('goConditions', 'Go')
+          ),
+          
+          box(
+            width = 3,
+            title = "Outlier Removal",
+            selectInput('outlier', 'variable', choices = c('Please select a dataset'), multiple = F),
+            actionButton('goOutlierRemoval', 'Go')
+            # ,
+            # plotOutput('')
+          ),
+          
+          box(
+            width = 3,
+            title = "Excludes",
+            selectInput('excludings', 'Value Range', choices = c('Please select a dataset'), multiple = T)
             
-            fileInput('file1', 'Choose CSV File',
-                      accept=c('text/csv',
-                               'text/comma-separated-values,text/plain',
-                               '.csv'))
           ),
           
           tabBox(
             width = 12,
-            
             # tabPanel("Data Table", tableOutput("table"))
-            tabPanel("Data Table", DT::dataTableOutput('table')),
-            tabPanel("Summary", verbatimTextOutput("summary"))
-          )
+            tabPanel("After Pre-processing", DT::dataTableOutput('inputTable')),
+            tabPanel("Summary", verbatimTextOutput("inputSummary"))
+          ),
+          
+          downloadButton("processedDataset", label = "Download")
         )
       ),
-      # </general>
+      # </preprocessing>
       
-      
-      tabItem(tabName = 'plotting',
+      tabItem(
+        tabName = 'plotting',
         fluidRow(
           box(
             width = 8,
+            title = "Options",
             selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T),
             selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F)
            
@@ -127,29 +182,9 @@ dashboardPage(
       ),
       #</plotting>
       
-      tabItem(tabName = 'segmenting',
+      tabItem(
+        tabName = 'segmenting',
         
-        # fluidRow(
-        #   box(
-        #     width = 12,
-        #     title = 'General settings',
-        #     
-        #     fluidRow(
-        #       box(
-        #         width = 6,
-        #         sliderInput("windowSize", "Window Size input:",
-        #                     min = 1, max = 1000, value = 100),
-        #         
-        #         sliderInput("overlap", "Overlap input:",
-        #                     min = 0, max = 1, value = 0.5),
-        #         
-        #         sliderInput("threshold", "Threshold input:",
-        #                     min = 0, max = 1, value = 0.9),
-        #         
-        #         radioButtons("univariate", "Variate type:",
-        #                      c("univariate" = 1,
-        #                        "multi-variate" = 0))
-        #       ),
         fluidRow(  
           uiOutput('segIndTabs'),
           
@@ -167,7 +202,7 @@ dashboardPage(
           
           box(
             width = 4,
-            actionButton('segbutton', 'Start')
+            actionButton('segbutton', 'Start', icon = icon("arrow-circle-right"))
           ),
           
           # Plot
