@@ -82,7 +82,7 @@ shinyServer(function(input, output, session) {
     if (is.null(d))
       return()
     
-    DT::datatable(d, options = list(pageLength = 10))
+    DT::datatable(d, options = list(pageLength = 20))
   })
     
    
@@ -141,18 +141,33 @@ shinyServer(function(input, output, session) {
   
   # click go button for normalizing
   observeEvent(input$goNormalizing, {
+    # user choose to normailizing
     if(input$normalizing){
       # record the maximum for all varaibles to recover
       
-      v$dataMax <- sapply(colnames(v$data),function(i){
+      tempMax <- sapply(colnames(v$data),function(i){
         max(v$data[i])
       })
-      v$dataMin <- sapply(colnames(v$data),function(i){
+      tempMin <- sapply(colnames(v$data),function(i){
         min(v$data[i])
       })
-      # print(dataMax)
-      v$data <- normalizeTS(v$data)
+
+      if(
+        length(which(tempMax == 1)) == length(tempMax)    # all tempMax == 1 
+        && length(which(tempMin == 0)) == length(tempMin) # all tempMin == 0 
+      ){
+        # it looks like that data has been normailized already
+        # so keep previous max/min and skip normalizeTS (since it has no effect)
+        v$data
+      }
+      else{
+        v$dataMax <- tempMax
+        v$dataMin <- tempMin
+        v$data <- normalizeTS(v$data)
+      }
+      
     }
+    # user choose to go to original data
     else{
       # recover by multipling the max values and min
       if(!is.null(v$dataMax)){
@@ -161,17 +176,90 @@ shinyServer(function(input, output, session) {
         }
       }
       v$data
-      
     }
+    
   })
+  
+  # remove excluding variables
+  observeEvent(input$goExcludingVar, {
+    v$data <- v$data[setdiff(colnames(v$data),input$excludingVar)]
+  })
+
+  # execute condition
+  observeEvent(input$goConditions, {
+    
+    # get index of rows according to the conditions
+    aIndex <- do.call(input$equalCon, list(
+        v$data[input$variableCon],
+        input$numberCon
+      )
+    )
+
+    # at least one element
+    if(TRUE %in% aIndex){
+      if(input$actionCon == "Remove line"){
+        v$data <- v$data[!aIndex,] 
+      }
+      else if(input$actionCon == "Replace with"){
+        v$data[aIndex, input$variableCon] <- input$replaceCon
+      }
+    }
+    
+    
+  })
+
+  # the content inside the popup
+  output$uiOutlierRemoval <- renderUI({
+    # there will a plot showing which points to kill
+    name <- input$outlierRemoval
+    X <- v$data[name]
+
+    avgX <- mean(X[,])
+    diffX <- abs(X - avgX)
+    aIndex <- which(diffX == max(diffX))
+    
+    plotName <- paste0('outlierRemoval', name)
+
+    output[[plotName]] <- renderDygraph({
+      graph <- dygraph(cbind(seq(from = 1, to = nrow(X)), X), main = name) %>%
+        dyOptions(colors = "#131688") %>%
+        dyEvent(aIndex, "To be removed", labelLoc = "bottom", color = "red")  
+    })
+  
+    # TODO: sometimes the to be removed line is close to the Y axis
+    # and thus invisiable
+    
+    # TODO: sometimes it is a range instead of one point
+    result_div <- div()
+    
+     
+    dop <- dygraphOutput(plotName, width = "100%", height = "300px")
+    result_div <- tagAppendChild(result_div, dop)
+    result_div <- tagAppendChild(result_div, div(
+      style="text-align:center; padding: 20px 0 10px",
+      actionButton('confirmOutlierRemoval', 'Confirm Remove')
+    ))
+
+    v$todoOutlierIndex <- aIndex
+    v$todoOutlierName <- name
+     
+    result_div
+
+  })
+
+
+  observeEvent(input$confirmOutlierRemoval, {
+    v$data <- v$data[-v$todoOutlierIndex, ]
+  })
+
+
 
   # data preview
   output$inputTable <- DT::renderDataTable({
-    # d <- dataInput()
     d <- v$data
     if (is.null(d))
       return()
-    DT::datatable(d, options = list(pageLength = 10))
+    DT::datatable(d, options = list(pageLength = 20))
   })
  
   output$inputSummary <- renderPrint({
@@ -180,6 +268,24 @@ shinyServer(function(input, output, session) {
       return()
     summary(d)
   })
+
+  output$processedDataset <- downloadHandler(
+    filename = function() {
+      paste('data-', Sys.Date(), '.csv', sep='')
+    },
+    content = function(con) {
+      write.csv(v$data, con)
+    }
+  )
+
+  # output$downloadData <- downloadHandler(
+#   filename = function() {
+#     paste('data-', Sys.Date(), '.csv', sep='')
+#   },
+#   content = function(con) {
+#     write.csv(data, con)
+#   }
+# )
   
   
   ###################################################
@@ -198,7 +304,6 @@ shinyServer(function(input, output, session) {
         )
       return()
     
-  
     
     # dygraph:
     # where the first element/column provides x-axis values and 
@@ -214,27 +319,25 @@ shinyServer(function(input, output, session) {
     }
     
     dygraph(target)
-      
-    
 
   })
-  
-  
-  # multi plot
-  get_mulplot <- function(d, inputX, inputY) {
-    if(is.null(inputY))
+
+    # multiple plots
+  output$mulplot <- renderUI({
+   
+    d <- v$data
+    if(is.null(input$plotY))
       return()
     # cat('hi')
     result_div <- div()
-    lapply(inputY, function(i){
-    
+    lapply(input$plotY, function(i){
       
       if(input$plotX == 'DataIndex'){
         DataIndex <- seq(from = 1, to = nrow(d))
         target <- cbind(DataIndex, d[i])
       }
       else{
-        target <- d[c(inputX,i)]
+        target <- d[c(input$plotX,i)]
       }
       
       # 1. create a container
@@ -255,48 +358,121 @@ shinyServer(function(input, output, session) {
         dygraph(target, main = i, group = 'mulplot') %>%
           dyOptions(colors = "#131688")
       })
-    
+      
     })
-
-  }
+  })
   
-  # correlation plot
-  get_corplot <- function(d, inputX, inputY) {
-    if(is.null(inputY))
+  # corelation plots
+  output$corplot <- renderUI({
+    
+    d <- v$data
+    if(is.null(input$plotY))
       return()
     
     result_div <- div()
     
-    lapply(inputY, function(i){
+    lapply(input$plotY, function(i){
       
-      if(inputX == 'DataIndex'){
+      if(input$plotX == 'DataIndex'){
         DataIndex <- seq(from = 1, to = nrow(d))
         target <- cbind(DataIndex, d[i])
       }
       else{
-        target <- d[c(inputX,i)]
+        target <- d[c(input$plotX,i)]
       }
       
-      
-      # dygraph(target, main = i, group = 'corplot') %>%
-      #   dyOptions(strokeWidth = 0, drawPoints = T, pointSize = 5, fillAlpha = 0.3) %>%
-      
-      # plot(target)
-      # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
-      # ggplot(target)
       tempName <- paste0("corplot_ggplot_", i)
       dop <- plotOutput(tempName, width = "100%", height = "300px")
       result_div <- tagAppendChild(result_div, dop)
-
+      
       output[[tempName]] <- renderPlot({
-        ggplot(target, aes_string(x = inputX, y = i)) + 
+        ggplot(target, aes_string(x = input$plotX, y = i)) + 
           geom_point() + 
           geom_smooth(method = "lm", se = F) +
           ggtitle(i)
       })
       
     })
-  }
+  })
+  
+  
+  # multi plot
+  # get_mulplot <- function(d, inputX, inputY) {
+  #   if(is.null(inputY))
+  #     return()
+  #   # cat('hi')
+  #   result_div <- div()
+  #   lapply(inputY, function(i){
+  #   
+  #     
+  #     if(input$plotX == 'DataIndex'){
+  #       DataIndex <- seq(from = 1, to = nrow(d))
+  #       target <- cbind(DataIndex, d[i])
+  #     }
+  #     else{
+  #       target <- d[c(inputX,i)]
+  #     }
+  #     
+  #     # 1. create a container
+  #     #     <div result/>
+  #     #         <div for dygraph1/>
+  #     #         <div for dygraph2/>
+  #     #
+  #     # 2. define output$dygraph1, output$dygraph2
+  #     tempName <- paste0("mulplot_dygraph_", i)
+  #     
+  #     dopOut <- dygraphOutput(tempName, width = "100%", height = "300px")
+  #     # dopOut <- tagAppendChild(dopOut, dop)
+  #     # dop <- dygraphOutput(dop, width = "200px", height = "200px")
+  #     # dopOut <- tagAppendChild(dopOut, dop)
+  #     result_div <- tagAppendChild(result_div, dopOut)
+  #     
+  #     output[[tempName]] <- renderDygraph({
+  #       dygraph(target, main = i, group = 'mulplot') %>%
+  #         dyOptions(colors = "#131688")
+  #     })
+  #   
+  #   })
+  # 
+  # }
+  
+  # correlation plot
+  # get_corplot <- function(d, inputX, inputY) {
+  #   if(is.null(inputY))
+  #     return()
+  #   
+  #   result_div <- div()
+  #   
+  #   lapply(inputY, function(i){
+  #     
+  #     if(inputX == 'DataIndex'){
+  #       DataIndex <- seq(from = 1, to = nrow(d))
+  #       target <- cbind(DataIndex, d[i])
+  #     }
+  #     else{
+  #       target <- d[c(inputX,i)]
+  #     }
+  #     
+  #     
+  #     # dygraph(target, main = i, group = 'corplot') %>%
+  #     #   dyOptions(strokeWidth = 0, drawPoints = T, pointSize = 5, fillAlpha = 0.3) %>%
+  #     
+  #     # plot(target)
+  #     # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
+  #     # ggplot(target)
+  #     tempName <- paste0("corplot_ggplot_", i)
+  #     dop <- plotOutput(tempName, width = "100%", height = "300px")
+  #     result_div <- tagAppendChild(result_div, dop)
+  # 
+  #     output[[tempName]] <- renderPlot({
+  #       ggplot(target, aes_string(x = inputX, y = i)) + 
+  #         geom_point() + 
+  #         geom_smooth(method = "lm", se = F) +
+  #         ggtitle(i)
+  #     })
+  #     
+  #   })
+  # }
 
   
   
@@ -388,7 +564,7 @@ shinyServer(function(input, output, session) {
     pars <- isolate(get_segparameters())
     colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
     # TODO remove excluding parameters from the table
-    pars <- pars[!colnames(pars) %in% input$segExcV]
+    # pars <- pars[!colnames(pars) %in% input$segExcV]
     pars
   })
   
@@ -413,8 +589,6 @@ shinyServer(function(input, output, session) {
     pars <- isolate(get_segparameters())
     d <- isolate(v$data)
     
-    # also remove segExcV colums
-    d <- d[setdiff(colnames(d),input$segExcV)]
     
     par(mfrow=c(ncol(d) + 1,1), mar=c(0,0,0,0))
     # apply LSDD to each of variable one by one
@@ -527,39 +701,41 @@ shinyServer(function(input, output, session) {
   
   
   #########################################################
-  ############# observe
+  ############# observe column names
+  #########################################################
   observe({
-    
-    # when data is imported
-    d <- v$data
-    
-    dCol <- colnames(d)
+   
+    dCol <- colnames(v$data)
     
     ############## pre-processing ########
-    # updateSelectInput(session, "variableRange", choices = dCol)
+    updateSelectInput(session, "excludingVar", choices = dCol)
+    # this will refresh all components
+    # let's keep outlierRemoval as previous
+    # TODO: Click the button, put the name in storage
+    updateSelectInput(session, "outlierRemoval", choices = dCol,
+                      selected = v$todoOutlierName)
     
+    updateSelectInput(session, "variableCon", choices = dCol)
+
     ############## plot tab ############## 
     updateSelectInput(session, "plotY", choices = dCol)
     updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
-    
-    # create dynamic numders of plots
-    output$mulplot <- renderUI({
-      get_mulplot(d, input$plotX, input$plotY)
-    })
-    
-    # create dynamic numders of plots
-    output$corplot <- renderUI({
-      get_corplot(d, input$plotX, input$plotY)
-    })
     
     ############## seg tab ############## 
     updateSelectInput(session, "segExcV", choices = dCol)
     updateSelectInput(session, "segIndV", choices = dCol)
     
-    
     # TODO: limit the size of the window smaller than the size of all data
     
     
   })
+  
+
+  
+  # observe({
+  #   d <- v$data
+  #   # create dynamic numders of plots
+  #   
+  # })
   
 })

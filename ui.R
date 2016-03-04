@@ -10,6 +10,7 @@ library(shinyjs)
 library(shinydashboard)
 library(DT)
 library(dygraphs)
+library(shinyBS)
 
 # read external js 
 fileName <- "shinyjsSeg.js"
@@ -27,8 +28,8 @@ dashboardPage(
     )),
     sidebarMenu(
       menuItem("Import", tabName = "import", icon = icon("file-o")),
-      menuItem("Pre-processing", tabName = "preprocessing", icon = icon("cogs")),
       menuItem("Plotting", tabName = "plotting", icon = icon("bar-chart")),
+      menuItem("Pre-processing", tabName = "preprocessing", icon = icon("cogs")),
       menuItem("Segmenting", tabName = "segmenting", icon = icon("columns")),
       menuItem("Biclustering", tabName = "biclustering", icon = icon("th")),
       menuItem("About", tabName = "about", icon = icon("info-circle"))
@@ -47,7 +48,6 @@ dashboardPage(
           box(
             width = 12,
             title = "Upload",
-            
             fluidRow(
               box(
                 width = 3,
@@ -67,7 +67,12 @@ dashboardPage(
               ),
               box(
                 width = 3,
-                checkboxInput('header', 'Header', TRUE)
+                # checkboxInput('header', 'Header', TRUE)
+                radioButtons('header', 'Header',
+                             c(
+                               'ON'=TRUE,
+                               'OFF'=FALSE),
+                             TRUE)
                 
               )
               
@@ -100,56 +105,7 @@ dashboardPage(
         )
       ),
       # </import>
-      
-      tabItem(
-        tabName = 'preprocessing',
-        fluidRow(
-          box(
-            width = 3,
-            title = "Normalization",
-            checkboxInput('normalizing', 'Normalizing', FALSE),
-            actionButton('goNormalizing', 'Go')
-          ),
-          
-          box(
-            width = 3,
-            title = "Conditions",
-            p('If'),
-            selectInput('variableCon', '', choices = c('Please select a dataset'), multiple = F),
-            selectInput('equalCon', '', choices = c('==','>=','<=','>','<'), multiple = F),
-            p('Then'),
-            selectInput('actionCon', '', choices = c('Remove line','Replace with'), multiple = F),
-            actionButton('goConditions', 'Go')
-          ),
-          
-          box(
-            width = 3,
-            title = "Outlier Removal",
-            selectInput('outlier', 'variable', choices = c('Please select a dataset'), multiple = F),
-            actionButton('goOutlierRemoval', 'Go')
-            # ,
-            # plotOutput('')
-          ),
-          
-          box(
-            width = 3,
-            title = "Excludes",
-            selectInput('excludings', 'Value Range', choices = c('Please select a dataset'), multiple = T)
-            
-          ),
-          
-          tabBox(
-            width = 12,
-            # tabPanel("Data Table", tableOutput("table"))
-            tabPanel("After Pre-processing", DT::dataTableOutput('inputTable')),
-            tabPanel("Summary", verbatimTextOutput("inputSummary"))
-          ),
-          
-          downloadButton("processedDataset", label = "Download")
-        )
-      ),
-      # </preprocessing>
-      
+
       tabItem(
         tabName = 'plotting',
         fluidRow(
@@ -158,15 +114,6 @@ dashboardPage(
             title = "Options",
             selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T),
             selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F)
-           
-            # 
-            # tags$hr(),
-            # 
-            # 
-            # actionButton("plotButton", "Plot"),
-            # actionButton("mulplotButton", "Multi-plot"),
-            # actionButton("corButton", "Correlation")
-            # 
           ),
           
           tabBox(
@@ -183,16 +130,84 @@ dashboardPage(
       #</plotting>
       
       tabItem(
+        tabName = 'preprocessing',
+        fluidRow(
+
+          box(
+            width = 3,
+            title = "Excludes",
+            # selectInput('excludings', 'Value Range', choices = c('Please select a dataset'), multiple = T)
+            selectInput('excludingVar', 'Excluding variable(s)', choices = c('Please select a dataset'), multiple = T)
+            # , icon("info-circle"), "Select variable(s) to be excluded."
+            , actionButton('goExcludingVar', 'Go')
+
+          ),
+
+          box(
+            width = 3,
+            title = "Normalization",
+            # checkboxInput('normalizing', 'Normalizing', FALSE),
+            radioButtons('normalizing', 'Normalization',
+                         c('ON'=T,
+                           'OFF'=F),
+                         F),
+            actionButton('goNormalizing', 'Go')
+          ),
+          
+          
+          
+          box(
+            width = 3,
+            title = "Outlier Removal",
+            selectInput('outlierRemoval', 'variable', choices = c('Please select a dataset'), multiple = F),
+            actionButton('goOutlierRemoval', 'Go'),
+            bsModal("popOutlierRemoval", "Outlier Removal", "goOutlierRemoval", size = "large",
+              uiOutput("uiOutlierRemoval"))
+            # ,
+            # plotOutput('')
+          ),
+          
+          box(
+            width = 3,
+            title = "Conditions",
+            selectInput('variableCon', 'If', choices = c('Please select a dataset'), multiple = F),
+            selectInput('equalCon', '', choices = c('==','>=','<=','>','<'), multiple = F),
+            numericInput('numberCon', label='', value=0),
+            selectInput('actionCon', 'Then', choices = c('Remove line','Replace with'), multiple = F),
+            conditionalPanel("input.actionCon == 'Replace with'",
+              numericInput('replaceCon', label='', value=0)
+            ),
+            actionButton('goConditions', 'Go')
+          ),
+          
+          
+          tabBox(
+            width = 12,
+            # tabPanel("Data Table", tableOutput("table"))
+            tabPanel("Pre-processed Data", DT::dataTableOutput('inputTable')),
+            tabPanel("Summary", verbatimTextOutput("inputSummary")),
+            tabPanel(tagList(shiny::icon("download"), "Download"), 
+                     div(
+                        style="text-align:center; padding:30px",
+                        downloadButton("processedDataset", label = "Download pre-processed data table as CSV")
+                      )
+                    )
+
+          )
+          
+          
+        )
+      ),
+      # </preprocessing>
+      
+      
+      tabItem(
         tabName = 'segmenting',
         
         fluidRow(  
           uiOutput('segIndTabs'),
           
-          box(
-            width = 4,
-            selectInput('segExcV', 'Excluding Variable(s)', choices = c('Please select a dataset'), multiple = T)
-            ,icon("info-circle"),"Select variable(s) to be excluded from segmentation."
-          ),
+          
           box(
             width = 4,
             selectInput('segIndV', 'Individual Setting', choices = c('Please select a dataset'), multiple = T)
