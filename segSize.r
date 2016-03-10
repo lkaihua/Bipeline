@@ -83,26 +83,41 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   # AD_GENERAL <- "AD2016_GENERAL" # column for all default settings
   sum_LSDD_G2L <- 0
   sum_LSDD_G2R <- 0
-  for(i in 1:ncol(data)){
-    # 1 x n matrix
-    Gmatrix <- t(matrix(data[G$start:G$end, i]))
-    Lmatrix <- t(matrix(data[L$start:L$end, i]))
-    Rmatrix <- t(matrix(data[R$start:R$end, i]))
+  
+  # under some extrme conditions
+  # the size of G could be 1, which means only 1 data point
+  # in this segments,
+  # but LSDD requires at least 2 data points to carry on.
+  # so just merge G to the shorter side
+  if(G$end - G$start > 1 
+    && L$end - L$start > 1   
+    && R$end - R$start > 1   
+  ){
+
+    for(i in 1:ncol(data)){
+      # 1 x n matrix
+      Gmatrix <- t(matrix(data[G$start:G$end, i]))
+      Lmatrix <- t(matrix(data[L$start:L$end, i]))
+      Rmatrix <- t(matrix(data[R$start:R$end, i]))
+        
+      # cat(dim(Gmatrix), dim(Lmatrix), dim(Rmatrix))
       
-    sum_LSDD_G2L <- sum(sum_LSDD_G2L, LSDDfast(
-        X1 = Gmatrix, 
-        X2 = Lmatrix,
-        sigma = segLSDDPars["sigma", i],    #sigma
-        lambda = segLSDDPars["lambda", i]   #lambda
+      sum_LSDD_G2L <- sum(sum_LSDD_G2L, LSDDfast(
+          X1 = Gmatrix, 
+          X2 = Lmatrix,
+          sigma = segLSDDPars["sigma", i],    #sigma
+          lambda = segLSDDPars["lambda", i]   #lambda
+        )
       )
-    )
-    sum_LSDD_G2R <- sum(sum_LSDD_G2R, LSDDfast(
-        X1 = Gmatrix, 
-        X2 = Rmatrix,
-        sigma = segLSDDPars["sigma", i],    #sigma
-        lambda = segLSDDPars["lambda", i]   #lambda
+      
+      sum_LSDD_G2R <- sum(sum_LSDD_G2R, LSDDfast(
+          X1 = Gmatrix, 
+          X2 = Rmatrix,
+          sigma = segLSDDPars["sigma", i],    #sigma
+          lambda = segLSDDPars["lambda", i]   #lambda
+        )
       )
-    )
+    }
   }
   
   # print(sum_LSDD_G2L)
@@ -110,18 +125,16 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   cat("Similary to left  is: ", sum_LSDD_G2L, "\n")
   cat("Similary to right is: ", sum_LSDD_G2R, "\n")
   
-  
   result <- 'left'
   
   if(sum_LSDD_G2R < sum_LSDD_G2L){
-    
     result <- 'right'
   }else if(sum_LSDD_G2L < sum_LSDD_G2R){
     # return('left')
   }else{
     # this is equal, very rare situation
     # merge with shorter segResults
-    if(length(Lmatrix) < length(Rmatrix)){
+    if(L$end - L$start < R$end - R$start){
       # return('left')
     }
     else{
@@ -129,7 +142,7 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
     }
     
   }
-  
+
   cat("Merge to ", result, "\n")
   result
 }

@@ -10,32 +10,33 @@ shinyjs.statSeg = {
 };
 
 shinyjs.updateSeg = function() {
-
-  // keep the wrong information in history
-  var info = $('#segplot>img').length ?
-  $('#segplot>img') :
-    $('<div/>')
-  .append($('#segplot').html())
-  .attr('class', 'shiny-plot-output shiny-bound-output shiny-output-error')
-  .attr('style', 'width: 100% ; height: 700px');
-
-  $('#segHistory').append(
-    $('<div/>')
-    .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
-    //.append('<p>all:' + shinyjs.statSeg.all)
-    //.append('<p>now:' + shinyjs.statSeg.now)
-    .append(info)
-    .append($('#segpars>table'))
-  );
-
+  
+  if(shinyjs.statSeg.all > 0){
+    // keep the wrong information in history
+    var info = $('#segplot img').length ?
+      $('#segplot img') :
+      $('<div/>')
+        .append($('#segplot').html())
+        .attr('class', 'shiny-plot-output shiny-output-error')
+        .attr('style', 'width: 100% ; height: 700px');
+  
+    $('#segHistory').append(
+      $('<div/>')
+      .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
+      //.append('<p>all:' + shinyjs.statSeg.all)
+      //.append('<p>now:' + shinyjs.statSeg.now)
+      .append($('#segpars table'))
+      .append(info)
+      
+    );
+  }
   // when click go, back to now
   //$('.segPiece').hide()
   //$('#segLatest').show()
 
   ++shinyjs.statSeg.all;
-
-  $('#segLatest')
-  .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
+  
+  $('#segLatest').attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
 
   shinyjs.statSeg.now = shinyjs.statSeg.all;
 

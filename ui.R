@@ -67,12 +67,7 @@ dashboardPage(
               ),
               box(
                 width = 3,
-                # checkboxInput('header', 'Header', TRUE)
-                radioButtons('header', 'Header',
-                             c(
-                               'ON'=TRUE,
-                               'OFF'=FALSE),
-                             TRUE)
+                checkboxInput('header', 'Header', TRUE)
                 
               )
               
@@ -132,52 +127,60 @@ dashboardPage(
       tabItem(
         tabName = 'preprocessing',
         fluidRow(
-
+          shinyjs::inlineCSS(list(
+            "#shiny-tab-preprocessing .goButton" = "position: absolute; right:10px; bottom: 20px"
+          )),
           box(
             width = 3,
+            height = "210px",
             title = "Excludes",
             # selectInput('excludings', 'Value Range', choices = c('Please select a dataset'), multiple = T)
-            selectInput('excludingVar', 'Excluding variable(s)', choices = c('Please select a dataset'), multiple = T)
+            selectInput('excludingVar', 'Exclude variable(s)', choices = c('Please select a dataset'), multiple = T)
             # , icon("info-circle"), "Select variable(s) to be excluded."
-            , actionButton('goExcludingVar', 'Go')
-
+            ,actionButton('goExcludingVar', 'Go', class="goButton", icon = icon("arrow-circle-right"))
+            ,bsModal("popExcludingVar", "Excludes", "goExcludingVar", size = "small", uiOutput("uiExcludingVar"))
+            
           ),
 
+          
           box(
             width = 3,
+            height = "210px",
+            title = "Outlier Removal",
+            selectInput('outlierRemoval', 'Select a variable', choices = c('Please select a dataset'), multiple = F),
+            actionButton('goOutlierRemoval', 'Go', class="goButton", icon = icon("arrow-circle-right")),
+            bsModal("popOutlierRemoval", "Outlier Removal", "goOutlierRemoval", size = "large",uiOutput("uiOutlierRemoval"))
+          ),
+          
+          box(
+            width = 4,
+            height = "210px",
+            title = "Conditions",
+            fluidRow(
+              column(4,selectInput('variableCon', 'If', choices = c('Please select a dataset'), multiple = F)),
+              column(4,selectInput('equalCon', '.', choices = c('==','>=','<=','>','<'), multiple = F)),
+              column(4,numericInput('numberCon', label='.', value=0))
+            ),
+            fluidRow(
+              column(5,selectInput('actionCon', 'Then', choices = c('Remove line','Replace with'), multiple = F)),
+              
+              conditionalPanel("input.actionCon == 'Replace with'",
+                column(4,numericInput('replaceCon', label='.', value=0))
+              )
+            ),
+            actionButton('goConditions', 'Go', class="goButton", icon = icon("arrow-circle-right"))
+          ),
+          
+          box(
+            width = 2,
+            height = "210px",
             title = "Normalization",
             # checkboxInput('normalizing', 'Normalizing', FALSE),
             radioButtons('normalizing', 'Normalization',
                          c('ON'=T,
                            'OFF'=F),
                          F),
-            actionButton('goNormalizing', 'Go')
-          ),
-          
-          
-          
-          box(
-            width = 3,
-            title = "Outlier Removal",
-            selectInput('outlierRemoval', 'variable', choices = c('Please select a dataset'), multiple = F),
-            actionButton('goOutlierRemoval', 'Go'),
-            bsModal("popOutlierRemoval", "Outlier Removal", "goOutlierRemoval", size = "large",
-              uiOutput("uiOutlierRemoval"))
-            # ,
-            # plotOutput('')
-          ),
-          
-          box(
-            width = 3,
-            title = "Conditions",
-            selectInput('variableCon', 'If', choices = c('Please select a dataset'), multiple = F),
-            selectInput('equalCon', '', choices = c('==','>=','<=','>','<'), multiple = F),
-            numericInput('numberCon', label='', value=0),
-            selectInput('actionCon', 'Then', choices = c('Remove line','Replace with'), multiple = F),
-            conditionalPanel("input.actionCon == 'Replace with'",
-              numericInput('replaceCon', label='', value=0)
-            ),
-            actionButton('goConditions', 'Go')
+            actionButton('goNormalizing', 'Go', class="goButton", icon = icon("arrow-circle-right"))
           ),
           
           
@@ -210,15 +213,21 @@ dashboardPage(
           
           box(
             width = 4,
-            selectInput('segIndV', 'Individual Setting', choices = c('Please select a dataset'), multiple = T)
-            ,icon("info-circle"),"Create an individual setting tab for each variable selected."
+            numericInput('segMaxWindowSize', label="Maximum Window Size", value=500)
+            ,
+            selectInput('segIndVars', 'Individual Setting', choices = c('Please select a dataset'), multiple = T)
+            ,
+            icon("info-circle"),"Create an individual setting tab for each variable selected."
           ),
               
           
           box(
             width = 4,
+            tableOutput("segpars2")
+            ,
             actionButton('segbutton', 'Start', icon = icon("arrow-circle-right"))
           ),
+
           
           # Plot
           box(
@@ -241,8 +250,9 @@ dashboardPage(
               width = 12,
               div(
                 id="segLatest",
-                plotOutput("segplot", width = "100%", height = "700px"),
-                tableOutput("segpars")
+                tableOutput("segpars"),
+                uiOutput("segplot")
+                
               )
             )
           )

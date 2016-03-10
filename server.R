@@ -20,7 +20,10 @@ options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
 DEBUG_ON = T
-AD_GENERAL = 'AD2016_General'
+DEBUG_SEGPLOT_ON = T
+
+# varaible names
+AD_GENERAL = 'AD2016General'
 
 shinyServer(function(input, output, session) {
   
@@ -181,9 +184,11 @@ shinyServer(function(input, output, session) {
   })
   
   # remove excluding variables
-  observeEvent(input$goExcludingVar, {
+  observeEvent(input$confirmExcludingVar, {
+    toggleModal(session, "popExcludingVar")
     v$data <- v$data[setdiff(colnames(v$data),input$excludingVar)]
   })
+  
 
   # execute condition
   observeEvent(input$goConditions, {
@@ -207,6 +212,19 @@ shinyServer(function(input, output, session) {
     
     
   })
+  
+  output$uiExcludingVar <- renderUI({
+    
+    
+    output$showExcludingVar <- renderText({
+        paste("Going to remove: ", toString(input$excludingVar))
+    })
+    div(
+      tags$h4(textOutput("showExcludingVar")) ,
+      bsButton('confirmExcludingVar', 'Confirm Excluding', style = "danger")
+    )
+    
+  })
 
   # the content inside the popup
   output$uiOutlierRemoval <- renderUI({
@@ -222,23 +240,39 @@ shinyServer(function(input, output, session) {
 
     output[[plotName]] <- renderDygraph({
       graph <- dygraph(cbind(seq(from = 1, to = nrow(X)), X), main = name) %>%
-        dyOptions(colors = "#131688") %>%
-        dyEvent(aIndex, "To be removed", labelLoc = "bottom", color = "red")  
+        dyAxis("x", drawGrid = FALSE) %>%
+        dyAxis("y", drawGrid = FALSE) %>%
+        dyLimit(avgX, paste0("Average of ",name),  labelLoc = "right", color = "black", strokePattern = "dotted")
+      
+      for(i in aIndex){
+        graph <- dyEvent(graph, i, labelLoc = "bottom", color = "#DF4A32",  strokePattern = "solid")
+      }
+      for(i in unique(X[aIndex,])){
+        graph <- dyLimit(graph, i, paste0("Farthest from average: ",i),  labelLoc = "right", color = "red", strokePattern = "dotted")   
+      }
+      
+      graph
+      
     })
   
-    # TODO: sometimes the to be removed line is close to the Y axis
-    # and thus invisiable
     
-    # TODO: sometimes it is a range instead of one point
     result_div <- div()
-    
      
     dop <- dygraphOutput(plotName, width = "100%", height = "300px")
     result_div <- tagAppendChild(result_div, dop)
-    result_div <- tagAppendChild(result_div, div(
-      style="text-align:center; padding: 20px 0 10px",
-      actionButton('confirmOutlierRemoval', 'Confirm Remove')
-    ))
+    result_div <- tagAppendChild(result_div, 
+      # div(
+      # 
+      div(
+        style="padding: 20px 0 10px; text-align:center;",
+
+        tags$h4(
+          "Select", tags$strong(length(aIndex)),"row(s) with value of", 
+          tags$strong( toString(unique(X[aIndex,])) )
+        ),
+        bsButton('confirmOutlierRemoval', 'Confirm Remove', style = "danger")
+      )
+    )
 
     v$todoOutlierIndex <- aIndex
     v$todoOutlierName <- name
@@ -274,7 +308,7 @@ shinyServer(function(input, output, session) {
       paste('data-', Sys.Date(), '.csv', sep='')
     },
     content = function(con) {
-      write.csv(v$data, con)
+      write.csv(v$data[-1], con)
     }
   )
 
@@ -481,59 +515,89 @@ shinyServer(function(input, output, session) {
   ###################################################
   
   output$segIndTabs <- renderUI({
-    segIndV <- input$segIndV
-    # if(!length(segIndV)){
-      # return()
+    # get all individual variable names
+    segIndVars <- input$segIndVars
+    # if(!length(segIndVars)){
+    # return()
     # }
     
     # use AD prefix for general tab
     # to void overplace data variables
     # 
     # create dynamical number of tabs
-    tempTabs <- lapply(c(AD_GENERAL, segIndV), function(i){
+    tempTabs <- lapply(c(AD_GENERAL, segIndVars), function(i){
       if(i == AD_GENERAL){
         tempTitle = 'General'
         tempUni =  c("univariate" = 1, "multi-variate" = 0)
-
+        
       }else{
         tempTitle = i
         tempUni = c("univariate" = 1)
         
       }
       
+      # update: replace value with a record of last experiment
+      
+      tempWS<- v$segpars["WindowSize",i]
+      tempO <- v$segpars["Overlap",i]
+      tempT <- v$segpars["Threshold",i]
+      tempU <- v$segpars["Univariate",i]
+      
+      # tempWS <- NULL
+      # tempO <- NULL
+      # tempT <- NULL
+      # tempU <- NULL
+      
       tabPanel(
         tempTitle,
         fluidRow(
           box(
             width = 12,
-          
+            
             sliderInput(paste0(i,"WindowSize"), "Window Size input:",
-                        min = 1, max = 1000, value = 100),
+                        min = 1, max = input$segMaxWindowSize, value = ifelse(is.null(tempWS), 100, tempWS)),
             
             sliderInput(paste0(i, "Overlap"), "Overlap input:",
-                        min = 0, max = 1, value = 0.5),
+                        min = 0, max = 1, value = ifelse(is.null(tempO), 0.5, tempO)),
             
             sliderInput(paste0(i, "Threshold"), "Threshold input:",
-                        min = 0, max = 1, value = 0.9),
+                        min = 0, max = 1, value = ifelse(is.null(tempT), 0.9, tempT)),
             
             radioButtons(paste0(i, "Univariate"), "Variate type:",
-                         tempUni, inline = T)
+                         tempUni, ifelse(is.null(tempU), 1, tempU), inline = T)
+            
+            
+            # sliderInput(paste0(i,"WindowSize"), "Window Size input:",
+            #             min = 1, max = 2, value = 1),
+            
+            # sliderInput(paste0(i, "Overlap"), "Overlap input:",
+            #             min = 1, max = 2, value = 1),
+            
+            # sliderInput(paste0(i, "Threshold"), "Threshold input:",
+            #             min = 1, max = 2, value = 1),
+            
+            # radioButtons(paste0(i, "Univariate"), "Variate type:",
+            #              tempUni, 1, inline = T)
           )
         )
       )
     })
     args <- c(
       tempTabs,
-      width = 8
+      width = 8,
+      selected = segIndVars[length(segIndVars)] # select last tab
     )
-    do.call("tabBox", args)
-    
+    do.call(tabBox, args)
   })
+  
+  # observeEvent(input$segIndConfirm, {
+  #   v$segIndVars <- input$segIndVars
+  # })
 
   # get parameters from the slider
   get_segparameters <- reactive({
     
-    segIndV <- input$segIndV
+    segIndVars <- input$segIndVars
     
     rowNames <- c(
       "WindowSize",
@@ -546,34 +610,58 @@ shinyServer(function(input, output, session) {
       row.names = rowNames
     )
     
-    all <- c(AD_GENERAL, segIndV)
+    all <- c(AD_GENERAL, segIndVars)
     for(i in all){
       for(j in rowNames){
-        pars[j,i] <- as.numeric(input[[paste0(i, j)]])
+        if(!is.null(input[[paste0(i, j)]])){
+          pars[j,i] <- as.numeric(input[[paste0(i, j)]])
+        }
+        else{
+          pars[j,i] <- 0
+        }
       }
     }
     
     pars
   })
   
+  
+  
+  # parameter preview
+  # updated when the sliders are being dragged
+  output$segpars2 <- renderTable({
+    pars <- get_segparameters()
+    v$segparsLatest <- pars
+    colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
+    pars
+  })
+
+  ################################################
+  ####### parameter table & segmentation plots
+  ################################################
+  # Table
   output$segpars <- renderTable({
     get_segtable()
   })
   
   get_segtable <- eventReactive(input$segbutton, {
-    pars <- isolate(get_segparameters())
+    pars <- isolate(v$segparsLatest)
     colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
-    # TODO remove excluding parameters from the table
-    # pars <- pars[!colnames(pars) %in% input$segExcV]
     pars
   })
-  
-  output$segplot <- renderPlot({
-    get_segplot()
+
+  # Plot
+  output$segplot <- renderUI({
+    output$segplot0 <- renderPlot({
+      get_segplot()
+    })
+    plotOutput("segplot0", width="100%", height="700px")
   })
-  
+
+  # after clicking the "start" button
+  # get all
   get_segplot <- eventReactive(input$segbutton, {
-    
+  
     segLSDDPars <- data.frame(
       row.names = c('sigma','lambda')
     )
@@ -581,68 +669,75 @@ shinyServer(function(input, output, session) {
     # LSDDUnion <- data.frame(
     #   col.names = c('start', 'end')
     # )
-    
+
     # cat('segplot starts')
-    
+
     # input$segplotButton
     # return a LSDD plot
-    pars <- isolate(get_segparameters())
+    pars <- isolate((v$segparsLatest))
     d <- isolate(v$data)
+
+    # keep a record for initialization
+    # v$segpars <- pars
+
+    # create n+1 rows in the plots
+    par(mfrow=c(ncol(d),1), mar=c(0,0,0,0))
     
+    # in order to make debug easier
+    # plot just data
+    if(DEBUG_SEGPLOT_ON){
+      for(col in colnames(d)){
+        # if the variable is not individually defined
+        if(!(col %in% colnames(pars))){
+          par <- AD_GENERAL
+        }else{
+          par <- col
+        }
+        plot(x=1:nrow(d), y=d[,col], type="l",
+             xaxt="n", yaxt="n",
+             xlab="time series index", ylab=par, main="")
+      }
+      return()
+    }
     
-    par(mfrow=c(ncol(d) + 1,1), mar=c(0,0,0,0))
     # apply LSDD to each of variable one by one
-    for(v in colnames(d)){
+    for(col in colnames(d)){
       # if the variable is not individually defined
-      if(!(v %in% colnames(pars))){
+      if(!(col %in% colnames(pars))){
         par <- AD_GENERAL
       }else{
-        par <- v
+        par <- col
       }
-      
-      LSDDResult<- LSDDsegment(d[v],
+
+      LSDDResult<- LSDDsegment(d[col],
                   windowSize=pars["WindowSize", par],
                   overlap=pars["Overlap", par],
                   thres=pars["Threshold", par],
                   LSDDparameters=T,
                   univariate=pars["Univariate", par])
-      
-      # dygraph(data.frame(x=1:nrow(d), y=d[,v]), main = "") 
-      # %>%
+
+      # dygraph(data.frame(x=1:nrow(d), y=d[,col]), main = "") %>%
         # dyEvent("1950-6-30", "Korea", labelLoc = "bottom") %>%
         # dyEvent(LSDDResult$segStart, color = 'blue')
-      plot(x=1:nrow(d), y=d[,v], type="l", 
+
+      plot(x=1:nrow(d), y=d[,col], type="l",
            xaxt="n", yaxt="n",
            xlab="time series index", ylab=par, main="")
       abline(v = LSDDResult$segStart, col="blue")
       abline(v = tail(LSDDResult$segEnd, 1), col="blue")
-      
       # normally: thisEnd == nextStart - 1 , or == endOfAll
-      # so no need to print end event line since they are distracting
+      # so no need to print all end event lines, since they are distracting
       # abline(v = LSDDResult$segEnd, col="red")
-      
-      segLSDDPars[v] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
+
+      segLSDDPars[col] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
       segLSDDUnion <- c(segLSDDUnion, LSDDResult$segStart)
 
     }
-    
-    # and apply general setting for the rest variables
-    # dGeneral <- setdiff(colnames(d), colnames(pars))
-    # if(!length(dGeneral)){
-    #   dGeneral <- d[dGeneral]
-    #   
-    #   LSDDsegment(dGeneral,
-    #               windowSize=pars["WindowSize", AD_GENERAL],
-    #               overlap=pars["Overlap", AD_GENERAL],
-    #               thres=pars["Threshold", AD_GENERAL],
-    #               LSDDparameters=FALSE,
-    #               univariate=pars["Univariate", AD_GENERAL])
-    # }
-    
+
     segLSDDUnion <- sort(unique(segLSDDUnion))
     # put the end
     # cat(segLSDDUnion)
-    
+
     # after we have all seg line
     # check MinSegSize
     # if less than the throttle, merge it
@@ -651,30 +746,37 @@ shinyServer(function(input, output, session) {
       end = tail(c(segLSDDUnion - 1, nrow(d)), -1)
       # col.names = c("start", "end")
     )
-    
 
-    newSeg <- segSize(data = d, 
-                          segResults = segResults, 
-                          segLSDDPars = segLSDDPars, 
-                          throttle = 100
-                        )
-    
-    plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n", 
+    # merge segements that below minimum size
+    finalSegs <- segSize(data = d,
+                      segResults = segResults,
+                      segLSDDPars = segLSDDPars,
+                      # TODO: throttle should be customizable
+                      throttle = 100
+                    )
+
+    # for biclustering usage
+    v$finalSegs = finalSegs
+
+    # plotting union segment results
+    plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
          xaxt="n", yaxt="n",
-         xlab="time series index", ylab=par, main="")
+         xlab="time series index", ylab="", main="")
     # new segment event line
-    abline(v = newSeg$start, col="blue")
+    abline(v = finalSegs$start, col="blue")
     abline(v = nrow(d), col="blue")
     # dotted merged event line
-    abline(v = setdiff(segLSDDUnion, newSeg$start), col="red", lty = 3)
-    
+    abline(v = setdiff(segLSDDUnion, finalSegs$start), col="red", lty = 3)
+
   })
   
+
+
   #########################################################
   ############ observe button
   # disable and re-enable the button
   observeEvent(input$segbutton, {
-    
+
     # run external js
     # to copy previous plot and info to the history
     js$updateSeg()
@@ -683,10 +785,10 @@ shinyServer(function(input, output, session) {
     html("segbutton", "Running...")
     disable("segbutton")
     
-    # it looks like this 2000ms will make sure 
+    # it looks like this 2000ms will make sure
     # the button is unclickable until the server is not busy
     delay(2000, {
-      html("segbutton", "Start")
+      html("segbutton", 'Start')
       enable("segbutton")
     })
   })
@@ -722,8 +824,8 @@ shinyServer(function(input, output, session) {
     updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
     
     ############## seg tab ############## 
-    updateSelectInput(session, "segExcV", choices = dCol)
-    updateSelectInput(session, "segIndV", choices = dCol)
+    # updateSelectInput(session, "segExcV", choices = dCol)
+    updateSelectInput(session, "segIndVars", choices = dCol)
     
     # TODO: limit the size of the window smaller than the size of all data
     
