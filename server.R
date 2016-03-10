@@ -538,10 +538,10 @@ shinyServer(function(input, output, session) {
       
       # update: replace value with a record of last experiment
       
-      tempWS<- v$segpars["WindowSize",i]
-      tempO <- v$segpars["Overlap",i]
-      tempT <- v$segpars["Threshold",i]
-      tempU <- v$segpars["Univariate",i]
+      tempWS<- v$segparsPrev["WindowSize",i]
+      tempO <- v$segparsPrev["Overlap",i]
+      tempT <- v$segparsPrev["Threshold",i]
+      tempU <- v$segparsPrev["Univariate",i]
       
       # tempWS <- NULL
       # tempO <- NULL
@@ -672,9 +672,10 @@ shinyServer(function(input, output, session) {
 
     # cat('segplot starts')
 
-    # input$segplotButton
     # return a LSDD plot
     pars <- isolate((v$segparsLatest))
+    v$segparsPrev <- pars
+    
     d <- isolate(v$data)
 
     # keep a record for initialization
