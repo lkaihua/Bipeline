@@ -10,7 +10,7 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
   
   for(i in 1:nrow(segResults)){
     # sorry you are too small we have to kill you
-    if(segResults[i, "end"] - segResults[i, "start"] + 1 <= throttle){
+    if(segResults[i, "segEnd"] - segResults[i, "segStart"] + 1 <= throttle){
       
       # if it is the first seg or the last seg
       # it only can be merged to one direction 
@@ -36,19 +36,19 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
 
         # merge to left
         # edit last seg
-        newSeg[nrow(newSeg), "end"] <- segResults[i, "end"]
+        newSeg[nrow(newSeg), "segEnd"] <- segResults[i, "segEnd"]
         
       }else{
         # merge to right
         # push to new vector
         newSeg <- rbind(newSeg, 
                             list(
-                              "start" = segResults[i,"start"],
-                              "end" = segResults[i+1, "end"]
+                              "segStart" = segResults[i,"segStart"],
+                              "segEnd" = segResults[i+1, "segEnd"]
                             )
         )
         # change next seg to be deal in next loop
-        segResults[i+1, "start"] = segResults[i, "start"]
+        segResults[i+1, "segStart"] = segResults[i, "segStart"]
       }
     }
     # You are long enough to go
@@ -68,7 +68,7 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
 # Compare Gap with two different time sequences
 # And return the one with higher similarity
 #######################################
-# L, G, R, three time sequences to deal with: list("start" = , "end" = )
+# L, G, R, three time sequences to deal with: list("segStart" = , "segEnd" = )
 # G is the gap (seg size below the minimum)
 
 # d: dataset
@@ -89,16 +89,16 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   # in this segments,
   # but LSDD requires at least 2 data points to carry on.
   # so just merge G to the shorter side
-  if(G$end - G$start > 1 
-    && L$end - L$start > 1   
-    && R$end - R$start > 1   
+  if(G$segEnd - G$segStart > 1 
+    && L$segEnd - L$segStart > 1   
+    && R$segEnd - R$segStart > 1   
   ){
 
     for(i in 1:ncol(data)){
       # 1 x n matrix
-      Gmatrix <- t(matrix(data[G$start:G$end, i]))
-      Lmatrix <- t(matrix(data[L$start:L$end, i]))
-      Rmatrix <- t(matrix(data[R$start:R$end, i]))
+      Gmatrix <- t(matrix(data[G$segStart:G$segEnd, i]))
+      Lmatrix <- t(matrix(data[L$segStart:L$segEnd, i]))
+      Rmatrix <- t(matrix(data[R$segStart:R$segEnd, i]))
         
       # cat(dim(Gmatrix), dim(Lmatrix), dim(Rmatrix))
       
@@ -122,8 +122,8 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   
   # print(sum_LSDD_G2L)
   # print(sum_LSDD_G2R)
-  cat("Similary to left  is: ", sum_LSDD_G2L, "\n")
-  cat("Similary to right is: ", sum_LSDD_G2R, "\n")
+  # cat("Similary to left  is: ", sum_LSDD_G2L, "\n")
+  # cat("Similary to right is: ", sum_LSDD_G2R, "\n")
   
   result <- 'left'
   
@@ -134,7 +134,7 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   }else{
     # this is equal, very rare situation
     # merge with shorter segResults
-    if(L$end - L$start < R$end - R$start){
+    if(L$segEnd - L$segStart < R$segEnd - R$segStart){
       # return('left')
     }
     else{
@@ -143,7 +143,7 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
     
   }
 
-  cat("Merge to ", result, "\n")
+  # cat("Merge to ", result, "\n")
   result
 }
 
