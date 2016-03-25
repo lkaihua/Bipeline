@@ -1,8 +1,11 @@
 /*
 * This file is for shinyjs code
 * 
+* Author: Kaihua Liu
+*
 * segmentation plot history
 */
+
 // seg history status
 shinyjs.statSeg = {
   now: 0,
@@ -13,26 +16,19 @@ shinyjs.updateSeg = function() {
   
   if(shinyjs.statSeg.all > 0){
     // keep the wrong information in history
-    var info = $('#segplot img').length ?
-      $('#segplot img') :
-      $('<div/>')
-        .append($('#segplot').html())
-        .attr('class', 'shiny-plot-output shiny-output-error')
-        .attr('style', 'width: 100% ; height: 700px');
+    // var info = $('#segplot img').length ?
+    //   $('#segplot img'):
+    //   $('#segplot0').html()
   
     $('#segHistory').append(
       $('<div/>')
       .attr('class', 'segPiece segPiece' + shinyjs.statSeg.all)
-      //.append('<p>all:' + shinyjs.statSeg.all)
-      //.append('<p>now:' + shinyjs.statSeg.now)
       .append($('#segpars table'))
-      .append(info)
+      // .append(info)
+      .append($('#segplot0').html())
       
     );
   }
-  // when click go, back to now
-  //$('.segPiece').hide()
-  //$('#segLatest').show()
 
   ++shinyjs.statSeg.all;
   

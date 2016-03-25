@@ -2,5 +2,5 @@
 .RData
 .Rhistory
 rsconnect/*
-LSDD*.r
 .Rproj.user
+_/*

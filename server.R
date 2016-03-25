@@ -13,20 +13,21 @@ library(ggplot2)
 source('normalize.R')
 source('LSDD.R')
 source('LSDDsegmentation.R')
-source('segSize.R')
+source('segMerge.R')
 
 # source('baselineAggregateBiclustering.R')
 source('baselineBiclustering.R')
 source('PDFbiclustering.R')
+source('LSDDbiclustering.R')
 
 
 # change maximum file size from 5MB to 50MB
 options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
-DEBUG_ON = T
-DEBUG_SEGPLOT_ON = T
-DEBUG_BIPLOT_ON = T
+DEBUG_ON = F
+DEBUG_SEGPLOT_ON = F
+
 
 # varaible names
 AD_GENERAL = 'AD2016General'
@@ -57,10 +58,11 @@ shinyServer(function(input, output, session) {
               header=input$header, 
               sep=input$sep,
               quote=input$quote))
-    }else{
+    }
+    else{
     # or debug deafult data
-      # d <- data.frame( read.csv('./test200.csv'))  
-      d <- data.frame( read.csv('./test5000.csv'))  
+      # d <- data.frame( read.csv('./data/test200.csv'))  
+      d <- data.frame( read.csv('./data/test5000.csv'))  
     }
     
     # dataFinal <- d
@@ -185,11 +187,17 @@ shinyServer(function(input, output, session) {
   
   output$uiExcludingVar <- renderUI({
     
-    
+    tempText <- input$excludingVar
     output$showExcludingVar <- renderText({
-        paste("Going to remove: ", toString(input$excludingVar))
+      if(is.null(tempText)){
+        "No column selected"
+      }
+      else{
+        paste("Going to remove:", toString(tempText))
+      }
     })
     div(
+      style = "text-align:center",
       tags$h4(textOutput("showExcludingVar")) ,
       bsButton('confirmExcludingVar', 'Confirm Excluding', style = "danger")
     )
@@ -237,7 +245,7 @@ shinyServer(function(input, output, session) {
         style="padding: 20px 0 10px; text-align:center;",
 
         tags$h4(
-          "Select", tags$strong(length(aIndex)),"row(s) with value of", 
+          tags$strong(length(aIndex))," row(s) selected, with value of ", 
           tags$strong( toString(unique(X[aIndex,])) )
         ),
         bsButton('confirmOutlierRemoval', 'Confirm Remove', style = "danger")
@@ -306,8 +314,9 @@ shinyServer(function(input, output, session) {
         ||
         is.null(input$plotY)
         )
+    {
       return()
-    
+    }
     
     # dygraph:
     # where the first element/column provides x-axis values and 
@@ -330,11 +339,13 @@ shinyServer(function(input, output, session) {
   output$mulplot <- renderUI({
    
     d <- v$data
-    if(is.null(input$plotY))
+    if(is.null(input$plotY)){
       return()
-    # cat('hi')
+    }
+    
     result_div <- div()
-    lapply(input$plotY, function(i){
+
+    out <- lapply(input$plotY, function(i){
       
       if(input$plotX == 'DataIndex'){
         DataIndex <- seq(from = 1, to = nrow(d))
@@ -352,20 +363,17 @@ shinyServer(function(input, output, session) {
       # 2. define output$dygraph1, output$dygraph2
       tempName <- paste0("mulplot_dygraph_", i)
       
-      # output$xxx mush be defined before uiOutput("xxx") to make it work!
+      # output$xxx mush be defined before uiOutput("xxx") to make it work
       output[[tempName]] <- renderDygraph({
         dygraph(target, main = i, group = 'mulplot') %>%
-          dyOptions(colors = "#131688")
+          dyOptions(colors = "black")
       })
-      dopOut <- dygraphOutput(tempName, width = "100%", height = "300px")
-      # dopOut <- tagAppendChild(dopOut, dop)
-      # dop <- dygraphOutput(dop, width = "200px", height = "200px")
-      # dopOut <- tagAppendChild(dopOut, dop)
-      result_div <- tagAppendChild(result_div, dopOut)
-      
-      
+      dygraphOutput(tempName, width = "100%", height = "300px")
       
     })
+
+    result_div <- tagAppendChild(result_div, out)
+      
   })
   
   # corelation plots
@@ -377,7 +385,7 @@ shinyServer(function(input, output, session) {
     
     result_div <- div()
     
-    lapply(input$plotY, function(i){
+    dop <- lapply(input$plotY, function(i){
       
       if(input$plotX == 'DataIndex'){
         DataIndex <- seq(from = 1, to = nrow(d))
@@ -394,12 +402,12 @@ shinyServer(function(input, output, session) {
           geom_smooth(method = "lm", se = F) +
           ggtitle(i)
       })
-      dop <- plotOutput(tempName, width = "100%", height = "300px")
-      result_div <- tagAppendChild(result_div, dop)
-      
-      
+      plotOutput(tempName, width = "100%", height = "300px")
       
     })
+
+    result_div <- tagAppendChild(result_div, dop)
+      
   })
   
   
@@ -499,6 +507,8 @@ shinyServer(function(input, output, session) {
     # 
     # create dynamical number of tabs
     tempTabs <- lapply(c(AD_GENERAL, segIndVars), function(i){
+
+      # TODO: hide general when all variables are selected
       if(i == AD_GENERAL){
         tempTitle = 'General'
         tempIcon = icon("navicon")
@@ -508,7 +518,6 @@ shinyServer(function(input, output, session) {
         tempTitle = i
         tempIcon = NULL
         tempUni = c("univariate" = 1)
-        
       }
       
       # update: replace value with a record of last experiment
@@ -607,7 +616,7 @@ shinyServer(function(input, output, session) {
     get_segtable()
   })
   
-  get_segtable <- eventReactive(input$segbutton, {
+  get_segtable <- eventReactive(input$segButton, {
     pars <- isolate(get_segparameters())
     colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
     pars
@@ -623,7 +632,7 @@ shinyServer(function(input, output, session) {
 
   # after clicking the "start" button
   # get all
-  get_segplot <- eventReactive(input$segbutton, {
+  get_segplot <- eventReactive(input$segButton, {
     
     pars <- isolate(get_segparameters())
     v$segparsPrev <- pars
@@ -642,19 +651,6 @@ shinyServer(function(input, output, session) {
     ########## DEBUG HERE ##########
     if(DEBUG_SEGPLOT_ON){
       
-      # assume 4 segments 
-      # tempSeg = round(seq(from=1, to=nrow(d), length.out = 6))
-      # v$mergedSegs <- data.frame(
-      #   segStart = head(tempSeg, -1),
-      #   segEnd = tail(tempSeg - 1, -1)
-      # )
-      
-      # for 5000 csv
-      v$mergedSegs <- data.frame(
-        segStart = c(1,391,631,1591,2071,2311,2551,3991,4711),
-        segEnd = c(390,630,1590,2070,2310,2550,3990,4710,5335)
-      )
-      
       for(col in colnames(d)){
         # if the variable is not individually defined
         if(!(col %in% colnames(pars))){
@@ -665,14 +661,14 @@ shinyServer(function(input, output, session) {
         plot(x=1:nrow(d), y=d[,col], type="l",
              xaxt="n", yaxt="n",
              xlab="time series index", ylab=par, main="")
-        abline(v = v$mergedSegs$segStart, col="blue")
+        abline(v = v$segments$segStart, col="blue")
       }
       
       plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
            xaxt="n", yaxt="n",
            xlab="time series index", ylab="", main="")
       # new segment event line
-      abline(v = v$mergedSegs$segStart, col="blue")
+      abline(v = v$segments$segStart, col="blue")
       
       return()
     }
@@ -722,26 +718,28 @@ shinyServer(function(input, output, session) {
       # col.names = c("start", "end")
     )
 
-    # merge segements that below minimum size
-    mergedSegs <- segSize(data = d,
-                      segResults = segResults,
-                      segLSDDPars = segLSDDPars,
-                      # TODO: throttle should be customizable
-                      throttle = 100
-                    )
+    # merge segements that below minimum size, using LSDDfast to compare
+    # which direction to merge
+    segments <- segMerge(data = d,
+                         segResults = segResults,
+                         segLSDDPars = segLSDDPars,
+                         # TODO: throttle should be customizable
+                         throttle = 100
+                        )
 
     # for biclustering usage
-    v$mergedSegs = mergedSegs
+    v$segments = segments
+    v$LSDDPars = segLSDDPars
 
     # plotting union segment results
     plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
          xaxt="n", yaxt="n",
          xlab="time series index", ylab="", main="")
     # new segment event line
-    abline(v = mergedSegs$segStart, col="blue")
+    abline(v = segments$segStart, col="blue")
     abline(v = nrow(d), col="blue")
     # dotted merged event line
-    abline(v = setdiff(segLSDDUnion, mergedSegs$segStart), col="red", lty = 3)
+    abline(v = setdiff(segLSDDUnion, segments$segStart), col="red", lty = 3)
 
 
     # TODO: use dygraph in segmentation
@@ -777,21 +775,20 @@ shinyServer(function(input, output, session) {
   ###################### observe button ###################
   #########################################################
   # disable and re-enable the button
-  observeEvent(input$segbutton, {
+  observeEvent(input$segButton, {
 
-    # run external js
     # to copy previous plot and info to the history
     js$updateSeg()
     
     # disable button for 2s to prevent multiple time application
-    html("segbutton", "Running...")
-    disable("segbutton")
+    html("segButton", "Running...")
+    disable("segButton")
     
     # it looks like this 2000ms will make sure
     # the button is unclickable until the server is not busy
     delay(2000, {
-      html("segbutton", 'Start')
-      enable("segbutton")
+      html("segButton", 'Start')
+      enable("segButton")
     })
   })
   
@@ -806,6 +803,8 @@ shinyServer(function(input, output, session) {
   # output$biTab <- renderText({
   #   input$biMethod
   # })
+
+  
   
   #########################################################
   ################ observe column names ###################
@@ -829,12 +828,30 @@ shinyServer(function(input, output, session) {
     updateSelectInput(session, "plotX", choices = c("DataIndex", dCol))
     
     ############## seg tab ############## 
-    # updateSelectInput(session, "segExcV", choices = dCol)
     updateSelectInput(session, "segIndVars", choices = dCol)
     
     # TODO: limit the size of the window smaller than the size of all data
     
     
+  })
+
+
+  observe({
+    # get index of rows according to the conditions
+    rowSelected <- tryCatch({
+      aIndex <- do.call(input$equalCon, list(
+          v$data[input$variableCon],
+          input$numberCon
+        )
+      )
+      paste0(sum(aIndex)," rows selected")
+    },
+    error = function(error){
+      return('')
+    })
+
+    # updateNumericInput(session, 'numberCon', label=aIndex)
+    updateNumericInput(session, 'numberCon', label=rowSelected)
   })
   
     
@@ -842,10 +859,15 @@ shinyServer(function(input, output, session) {
   ################# biclustering Tab ################
   ###################################################
 
-  if(DEBUG_BIPLOT_ON){
-    v$mergedSegs <- data.frame(
+  if(DEBUG_SEGPLOT_ON){
+    # for 5000 csv
+    v$segments <- data.frame(
       segStart = c(1,391,631,1591,2071,2311,2551,3991,4711),
       segEnd = c(390,630,1590,2070,2310,2550,3990,4710,5335)
+    )
+    v$LSDDPars <- data.frame(
+      sigma = c(0.25,2.625,0.25,0.25),
+      lambda = c(0.001,5.0005,0.001,0.003162)
     )
   }
 
@@ -875,11 +897,11 @@ shinyServer(function(input, output, session) {
   #   
   #   if(prefix == "baselineBi"){
   #     
-  #     fit <- plotCCBiclustering(v$data, v$mergedSegs, delta=pars2$Delta, alpha=pars2$Alpha, number=pars2$K)
+  #     fit <- plotCCBiclustering(v$data, v$segments, delta=pars2$Delta, alpha=pars2$Alpha, number=pars2$K)
   #     # get result and then start plotting
   #     
-  #     aSegStart <- v$mergedSegs$segStart
-  #     aSegEnd <- v$mergedSegs$segEnd
+  #     aSegStart <- v$segments$segStart
+  #     aSegEnd <- v$segments$segEnd
   #     data <- v$data
   #     K <- fit@Number
   #     Ncol <- ncol(data)
@@ -912,7 +934,7 @@ shinyServer(function(input, output, session) {
   #   
   #   
   #   if(prefix == 'PDFBi'){
-  #     result <- PDFbiclustering(data = v$data, segments = v$mergedSegs, delta = 0.0000000001, k = 2)
+  #     result <- PDFbiclustering(data = v$data, segments = v$segments, delta = 0.0000000001, k = 2)
   #     
   #     # TODO: return all results and then call plots function
   #     # biplot(result)
@@ -934,8 +956,7 @@ shinyServer(function(input, output, session) {
   ###################### Try dygraph + distribution  ###############
   ##################################################################
     
-  get_biDygraph <- eventReactive(input$biButton, {
-
+  get_biGraph <- eventReactive(input$biButton, {
 
     # see which tab is selected
     func <- input$biFunctions
@@ -950,144 +971,279 @@ shinyServer(function(input, output, session) {
       prefix <- "LSDDBi"  
     }
     
-    # go for baseline first
-    pars <- c('Seg', 'Delta', 'Alpha', 'K')
-    pars <- sapply(pars, function(i){
-      list(
-        input[[ paste0(prefix, i) ]] 
-      )
-    })
+    # all options here
+    # if the option name is missing in one tab
+    # it would be null and discarded
+    parOptions <- c('Seg', 'Delta', 'Alpha', 'K')
+    pars <- list()
+    for(par in parOptions){
+      temp <- input[[ paste0(prefix, par) ]] 
+      if(!is.null(temp)){
+        pars[[par]] <- temp
+      }
+    }
+
+    v$bipars <- pars
+    v$bifunc <- func
     
     data <- v$data
     Ncol <- ncol(data)
     Nrow <- nrow(data)
-    
+
+    # TODO when select segments on, check whether done segmentation
+    segOn = pars$Seg
+    if(segOn){
+      segments <- v$segments
+      aSegStart <- segments$segStart
+      aSegEnd <- segments$segEnd
+    }
+    else{
+      # when the option is turned off, we choose not to aggregate points
+      # with the segmentation result,
+      # and it contains #Nrow segments, which means every single point is a segment
+      segments <- NULL
+      aSegStart <- 1:Nrow
+      aSegEnd <- 1:Nrow
+    }
+
+
     if(prefix == "baselineBi"){
-
-      # TODO when select segments on, check whether done segmentation
-      if(pars$Seg){
-        segments <- v$mergedSegs
-        aSegStart <- segments$segStart
-        aSegEnd <- segments$segEnd
-      }
-      else{
-        # when the option is turned off, we choose not to aggregate points
-        # with the segmentation result,
-        # and it contains Nrow segments, which means every single point is a segment
-        segments <- NULL
-        aSegStart <- 1:Nrow
-        aSegEnd <- 1:Nrow
-      }
-      
       fit <- baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
+    }
+    else if(prefix == "PDFBi"){
+      fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
+    }
+    else if(prefix == "LSDDBi"){
+      # segments should contain sigma and lambda for LSDD
+      # make as list, since sigma and segStart could have different length
+      segments <- as.list(segments)
+      segments$sigma <- v$LSDDPars$sigma
+      segments$lambda <- v$LSDDPars$lambda
+      fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
+    }
+
+    # store this information
+    v$bifit <- fit
+
+    # update bicluster selector
+    K <- fit@Number
+    choices <- 1:K
+    names(choices) <- paste0("Bicluster #", c(1:K))
+    updateSelectInput(session, "biclusterSelector", choices = choices)
+    
+    # dygraph of series and biclusters
+    output$biDygraph <- renderUI({
+      get_biDygraph(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd, segOn = segOn)
+    })
+    dygraph_div <- uiOutput('biDygraph')
+    # dygraph_div <- get_biDygraph(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd, segOn = segOn)
+    
+    # density functions
+    output$biDensity <- renderPlot({
+      get_biDensity()
+    })
+    
+    get_biDensity <- function(){
+      par(mfrow=c(Ncol,1), mar=c(2.5,2,1.5,0))
       
-      # get result and then start plotting
-
-      K <- fit@Number
+      # if one variable is not linked to any bicluster
+      # newColIndex[j] should == 0
+      newColIndex <- colSums(fit@NumberxCol)
       
-      ###################### Try dygraph + distribution  ###############
-      ##################################################################
-      result_div <- div()
-
-      # for(i in 1:Ncol){
-      dygraph_div <- lapply(colnames(data), function(i){
-        # bind biclusters into a time series
-        X <- cbind(seq(from = 1, to = Nrow))
-        target <- cbind(X, data[i])
-
-        # for each variable print time series
-        tempName <- paste0("biDygraph_",i)
-
-        output[[tempName]] <- renderDygraph({
-          g <- dygraph(target, main="", group="biDygraphs") %>%
-            dyAxis("x", drawGrid = FALSE, axisLabelColor="White") %>%
-            dyAxis("y", drawGrid = FALSE, label = i) %>%
-            dyOptions(colors = "black")
-            # dyHighlight(highlightSeriesBackgroundAlpha = 0.2,
-            #             hideOnMouseOut = FALSE)
+      for(j in 1:Ncol){
+        # biclustering result could not contain such infomation⁄
+        if(
+             any("newRowIndex" == slotNames(fit))    
+        ){
           
+          rRemoved <- fit@rRemoved
+          newRowIndex <- fit@newRowIndex
           
-          # get colors
-          colorMax <- 8
-          if( K > colorMax ){
-            colorNumber <- colorMax
-          }
-          else if( K < 3 ){
-            colorNumber <- 3
+          # if no rows are removed, then only plot new one
+          if(!length(rRemoved)){
+            # TODO: make sure it's right
+            # density(data[newRowIndex[[1]],j])$y works...
+            pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
+            aYmax <- max(pdfB)
+            if(newColIndex[j] > 0) {
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ylab="", main="", ylim=c(0, aYmax))
+            }
+            else {
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ylab="", main="", col="grey", ylim=c(0, aYmax))
+            }
           }
           else{
-            colorNumber <- K
+            pdfA <- density(data[rRemoved[[1]],j], from=0, to=1, n=2^10)$y
+            pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
+            aYmax <- max(pdfA, pdfB)
+            if(newColIndex[j] > 0) {
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ylab="", main="", ylim=c(0, aYmax))
+              lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="red", type="l")
+            }
+            else {
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ylab="", main="", col="grey", ylim=c(0, aYmax))
+              lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="grey", type="l")
+            }
           }
-          # There are only 8 colors in set2
-          color = RColorBrewer::brewer.pal(colorNumber, "Set2")
-          # add alpha
-          # color <- add.alpha(color, alpha=0.4)
-            
-          columns <- 1:Ncol
-          for(k in 1:K) {
-            aStart <- aSegStart[fit@RowxNumber[,k]]
-            aEnd <- aSegEnd[fit@RowxNumber[,k]]
-            S <- length(aStart)
-            C <- fit@NumberxCol[k,]
-            for(ind in 1:S) {
-              # the column is included in the biclusters
-              if(which(i == colnames(data)) %in% columns[C]){
-                # cat('i ',i, 'start', aStart[i], 'end', aEnd[i], 'j ',j, '\n')
-                if(pars$Seg){
-                  g <- dyShading(g, from = aStart[ind], to = aEnd[ind], color = color[k %% colorMax])
-                }
-                else{
-                  # when uncheck using segments,
-                  # all shading parts become a single point and thus use event line
-                  g <- dyEvent(g, x = aStart[ind], color = color[k %% colorMax])
-                }
+          
+        }
+        else{
+          plot(density(data[,j]), main="")
+        }
+      }
+    }
+    
+    density_div <- plotOutput('biDensity', width ="15%", height = "600px")
+    
+    
+    # organize result
+    result_div <- div()
+    result_div <- tagAppendChild(result_div, density_div)
+    result_div <- tagAppendChild(result_div, dygraph_div)
+    result_div
+    
+
+    
+  })
+  
+  ###################### Try dygraph + distribution  ###############
+  ##################################################################
+  get_biDygraph <- function(data, fit, aSegStart, aSegEnd, segOn){
+    
+    selected <- input$biclusterSelector
+    # cat(selected)
+    
+    Ncol <- ncol(data)
+    Nrow <- nrow(data)
+    K <- fit@Number
+    
+    all_dygraph <- div(id="biDygraphAll")
+
+    now_time <- as.numeric(as.POSIXct(Sys.time()))
+      
+    dygraph_div <- lapply(colnames(data), function(i){
+      # bind biclusters into a time series
+      X <- cbind(seq(from = 1, to = Nrow))
+      target <- cbind(X, data[i])
+      
+      # for each variable print time series
+      tempName <- paste0("biDygraph_", i, '_', now_time)
+      
+      output[[tempName]] <- renderDygraph({
+        
+        # plot series
+        g <- dygraph(target, main="", group="biDygraphs") %>%
+          dyAxis("x", drawGrid = FALSE, axisLabelFontSize=0, axisLabelColor="White") %>%
+          dyAxis("y", drawGrid = FALSE, label = i) %>%
+          dyOptions(colors = "black")
+       
+        
+        
+        
+        # the biclusters selected will be shown
+        if(is.null(selected)){
+          range <- 1:K
+        }
+        else{
+          range <- as.numeric(selected)
+        }
+
+        # add alpha
+        # color <- add.alpha(color, alpha=0.4)
+        colorMax <- 8
+        # get colors
+        # There are only 8 colors in set2
+        colors = RColorBrewer::brewer.pal(colorMax, "Set2")
+
+        columns <- 1:Ncol
+        for(k in range) {
+          aStart <- aSegStart[fit@RowxNumber[,k]]
+          aEnd <- aSegEnd[fit@RowxNumber[,k]]
+          S <- length(aStart)
+          C <- fit@NumberxCol[k,]
+          for(ind in 1:S) {
+            # the column is included in the biclusters
+            if(any(which(i == colnames(data)) == columns[C])){
+              # cat('i ',i, 'start', aStart[i], 'end', aEnd[i], 'j ',j, '\n')
+              if(segOn){
+                g <- dyShading(g, from = aStart[ind], to = aEnd[ind], color = colors[k %% colorMax + 1])
+              }
+              else{
+                # when uncheck using segments,
+                # all shading parts become a single point and thus use event line
+                g <- dyEvent(g, x = aStart[ind], color = colors[k %% colorMax + 1])
               }
             }
           }
-          
-          # only show segment line when seg box checked
-          if(pars$Seg){
-            for(segline in aSegStart){
-              g <- dyEvent(g, segline, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
-            }
-          }
-          
-          g
-
-        })
- 
-        tempOut <- dygraphOutput(tempName, width = "85%", height = paste0(round(600/Ncol),"px"))
-        # result_div <- tagAppendChild(result_div, tempOut)
-      # }
-      })
-      
-      output$biDensity <- renderPlot({
-        get_biDensity()
-      })
-      
-      get_biDensity <- function(){
-        par(mfrow=c(Ncol,1), mar=c(2,2,0,0))
-        for(i in 1:Ncol){
-          plot(density(data[,i]), main="")
-          # ggplot(data,) + geom_density()
         }
-      }
+        
+        # only show segment line when seg box checked
+        if(segOn){
+          for(segline in aSegStart){
+            g <- dyEvent(g, segline, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
+          }
+        }
+        
+        g
+        
+      })
       
-      density_div <- plotOutput('biDensity', width ="15%", height = "600px")
+      dygraphOutput(tempName, width = "85%", height = paste0(round(600/Ncol),"px"))
       
-      result_div <- tagAppendChild(result_div, density_div)
-      result_div <- tagAppendChild(result_div, dygraph_div)
-      
-    }
+    })
 
-    result_div
-   
+    all_dygraph <- tagAppendChild(all_dygraph, dygraph_div)
+  }
+  
+  
+  output$biGraph <- renderUI({
+    get_biGraph()
+  })
+
+  output$bipars <- renderTable({
+    input$biButton
+    pars <- v$bipars
+    if(is.null(pars)){
+      return()
+    }
+    else{
+      data.frame(pars, row.names = v$bifunc)
+    }
+  })
+
+  #########################################################
+  ###################### observe button ###################
+  #########################################################
+  # disable and re-enable the button
+  observeEvent(input$biButton, {
+
+    # to copy previous plot and info to the history
+    js$updateBi()
+    
+    # disable button for 2s to prevent multiple time application
+    html("biButton", "Running...")
+    disable("biButton")
+    
+    # it looks like this 2000ms will make sure
+    # the button is unclickable until the server is not busy
+    delay(2000, {
+      html("biButton", 'Start')
+      enable("biButton")
+    })
   })
   
-  
-  output$biDygraph <- renderUI({
-    get_biDygraph()
+  observeEvent(input$biPrev, {
+    js$prevBi()
   })
   
+  observeEvent(input$biNext, {
+    js$nextBi()
+  })
+
+  
+  observeEvent(input$biSave, {
+    js$saveBi()
+  })
+
   
 })

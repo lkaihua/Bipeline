@@ -1,7 +1,7 @@
 # The function plotKMeans returns a plot of clustered data using k-means
 # 
 # Author: Ricardo Cachucho
-# Edited by kai
+# Edited by kai on Mar 2016
 ###########################################################################################################
 library("biclust")
 
@@ -10,7 +10,6 @@ baselineBiclustering <- function(data, segments=NULL, method=BCCC(), delta=0.01,
   
   # if segments are NULL, then skip aggregate part
   if(is.null(segments)){
-    #AggregateData <- matrix(data=data,ncol=ncol(data),nrow=nrow(data))
     AggregateData <- as.matrix(data)
   }
   else{

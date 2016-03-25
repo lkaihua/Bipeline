@@ -17,6 +17,8 @@ fileName <- "shinyjsSeg.js"
 # readLines import file asynchronously and fails shinyjs
 # jsCode <- paste(readLines("./shinyjsSeg.js"), collapse=" ")
 jsCode <- readChar(fileName, file.info(fileName)$size)
+fileName2 <- "shinyjsBi.js"
+jsCode2 <- readChar(fileName2, file.info(fileName2)$size)
 
 dashboardPage(
   dashboardHeader(title = "Analysis Dashboard"),
@@ -36,9 +38,12 @@ dashboardPage(
     )
   ),
   dashboardBody(
+    tags$head(includeScript("html2canvas.js")),
+    tags$head(includeScript("download.js")),
     useShinyjs(),
     # extend js
     extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg")),
+    extendShinyjs(text = jsCode2, functions = c("updateBi", "prevBi", "nextBi", "showBi", "saveBi")),
     tabItems(
 
       ######################################################
@@ -148,10 +153,9 @@ dashboardPage(
             height = "200px",
             title = "Excludes",
             # selectInput('excludings', 'Value Range', choices = c('Please select a dataset'), multiple = T)
-            selectInput('excludingVar', 'Exclude variable(s)', choices = c('Please select a dataset'), multiple = T)
-            # , icon("info-circle"), "Select variable(s) to be excluded."
-            ,actionButton('goExcludingVar', 'Go', class="goButton", icon = icon("arrow-circle-right"))
-            ,bsModal("popExcludingVar", "Excludes", "goExcludingVar", size = "small", uiOutput("uiExcludingVar"))
+            selectInput('excludingVar', 'Exclude variable(s)', choices = c('Please select a dataset'), multiple = T),
+            actionButton('goExcludingVar', 'Go', class="goButton", icon = icon("arrow-circle-right")),
+            bsModal("popExcludingVar", "Excludes", "goExcludingVar", size = "small", uiOutput("uiExcludingVar"))
             
           ),
 
@@ -172,10 +176,7 @@ dashboardPage(
             height = "200px",
             title = "Normalization",
             # checkboxInput('normalizing', 'Normalizing', FALSE),
-            radioButtons('normalizing', 'Normalization',
-                         c('ON'=T,
-                           'OFF'=F),
-                         F),
+            radioButtons('normalizing', 'Normalization',c('ON'=T,'OFF'=F),F),
             actionButton('goNormalizing', 'Go', class="goButton", icon = icon("arrow-circle-right"))
           ),
           
@@ -184,12 +185,12 @@ dashboardPage(
             height = "210px",
             title = "Conditions",
             fluidRow(
-              column(4,selectInput('variableCon', 'If', choices = c('Please select a dataset'), multiple = F)),
+              column(4,selectInput('variableCon', 'If', choices = c('.'), multiple = F)),
               column(4,selectInput('equalCon', '.', choices = c('==','>=','<=','>','<'), multiple = F)),
               column(4,numericInput('numberCon', label='.', value=0))
             ),
             fluidRow(
-              column(5,selectInput('actionCon', 'Then', choices = c('Remove line','Replace with'), multiple = F)),
+              column(4,selectInput('actionCon', 'Then', choices = c('Remove line','Replace with'), multiple = F)),
               
               conditionalPanel("input.actionCon == 'Replace with'",
                                column(4,numericInput('replaceCon', label='.', value=0))
@@ -240,7 +241,7 @@ dashboardPage(
             width = 4,
             # tableOutput("segpars2")
             # ,
-            actionButton('segbutton', 'Start', icon = icon("arrow-circle-right"))
+            bsButton('segButton', label = 'Start')
           ),
 
           
@@ -255,8 +256,8 @@ dashboardPage(
                 style="padding-right: 10px",
                 'Plots'
               ),
-              actionButton("segPrev", label = "", icon = icon("arrow-left")),
-              actionButton("segNext", label = "", icon = icon("arrow-right"))
+              bsButton("segPrev", label = "", icon = icon("arrow-left")),
+              bsButton("segNext", label = "", icon = icon("arrow-right"))
             ),
             
             # tabPanel('Now',
@@ -293,12 +294,15 @@ dashboardPage(
                   width = 12,
                   checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
                   ,
-                  numericInput('baselineBiDelta', label="Delta", value=0.01)
-                  ,
-                  numericInput('baselineBiAlpha', label="Alpha", value=1)
-                  ,
-                  numericInput('baselineBiK', label="K", value=100)
-                  
+                  column(4,
+                    numericInput('baselineBiDelta', label="Delta", value=0.01)
+                  ),
+                  column(4,
+                    numericInput('baselineBiAlpha', label="Alpha", value=1)
+                  ),
+                  column(4,
+                    numericInput('baselineBiK', label="K", value=100)
+                  )
                 )
               )
             )
@@ -308,12 +312,13 @@ dashboardPage(
               fluidRow(
                 box(
                   width = 12,
-                  checkboxInput('PDFBiSeg', 'Segmentation', TRUE)
-                  ,
-                  numericInput('PDFBiDelta', label="Delta", value=0.01)
-                  ,
-                  numericInput('PDFBiK', label="K", value=100)
-                  
+                  checkboxInput('PDFBiSeg', 'Segmentation', TRUE),
+                  column(6,
+                    numericInput('PDFBiDelta', label="Delta", value=0.01)
+                  ),
+                  column(6,
+                    numericInput('PDFBiK', label="K", value=10)
+                  )
                 )
               )
             )
@@ -325,10 +330,12 @@ dashboardPage(
                   width = 12,
                   checkboxInput('LSDDBiSeg', 'Segmentation', TRUE)
                   ,
-                  numericInput('LSDDBiDelta', label="Delta", value=0.2)
-                  ,
-                  numericInput('LSDDBiK', label="K", value=5)
-                  
+                  column(6,
+                    numericInput('LSDDBiDelta', label="Delta", value=0.01)
+                  ),
+                  column(6,
+                    numericInput('LSDDBiK', label="K", value=10)
+                  )
                 )
               )
             )
@@ -336,10 +343,7 @@ dashboardPage(
           
           box(
             width = 4,
-            # textOutput("biTab"),
-            # checkboxInput('biDygraph', 'Use dygraph', FALSE),
-            
-            actionButton('biButton', 'Start', icon = icon("arrow-circle-right"))
+            actionButton('biButton', 'Start')
           ),
           
           # Plot
@@ -353,24 +357,32 @@ dashboardPage(
                 style="padding-right: 10px",
                 'Plots'
               ),
-              actionButton("biPlotPrev", label = "", icon = icon("arrow-left")),
-              actionButton("biPlotNext", label = "", icon = icon("arrow-right"))
+              actionButton("biPrev", label = "", icon = icon("arrow-left")),
+              actionButton("biNext", label = "", icon = icon("arrow-right")),
+              actionButton("biSave", label = "Save", icon = icon("download")),
+              
+              
+              column(4,
+                    style="float:right",
+                    selectInput('biclusterSelector', 'Select bicluster(s)', choices = c("Please biclustering"), multiple = T)
+              )
             ),
             
             # tabPanel('Now',
             div(
               
               shinyjs::inlineCSS(list(
-                "#biDensity" = "float: right"
+                "#biHistory .biPiece>img" = "float: right; ",
+                '#biHistory #biDensity' = "float: right"
               )),
               
-              id = "biPlotHistory",
+              id = "biHistory",
               width = 12,
               div(
-                id="biPlotLatest",
-                # tableOutput("bipars"),
+                id="biLatest",
+                tableOutput("bipars"),
                 # uiOutput("biplot"),
-                uiOutput("biDygraph")
+                uiOutput("biGraph")
               )
             )
           )

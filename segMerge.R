@@ -1,12 +1,16 @@
+# The function plotKMeans returns a plot of clustered data using k-means
+# 
+# Author: Kaihua Liu
+###########################################################################################################
+
+
 source('LSDD.R')
 source('LSDDsegmentation.R')
 
 
-segSize <- function(data, segResults, segLSDDPars, throttle = 100){
-  
+segMerge <- function(data, segResults, segLSDDPars, throttle = 100){
+  # result
   newSeg <- data.frame()
-  
-  mergeDirection <- 'left'
   
   for(i in 1:nrow(segResults)){
     # sorry you are too small we have to kill you
@@ -23,7 +27,7 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
       } 
       # use LSDD fast function to calculate similarity
       else {
-        mergeDirection <- mergeSeg(
+        mergeDirection <- LSDDCompare(
           L = segResults[i-1, ],
           G = segResults[i, ],
           R = segResults[i+1, ],
@@ -42,16 +46,16 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
         # merge to right
         # push to new vector
         newSeg <- rbind(newSeg, 
-                            list(
-                              "segStart" = segResults[i,"segStart"],
-                              "segEnd" = segResults[i+1, "segEnd"]
-                            )
-        )
+                        list(
+                          "segStart" = segResults[i,"segStart"],
+                          "segEnd" = segResults[i+1, "segEnd"]
+                        )
+                       )
         # change next seg to be deal in next loop
         segResults[i+1, "segStart"] = segResults[i, "segStart"]
       }
     }
-    # You are long enough to go
+    # You are long enough to pass
     else{
       newSeg <- rbind(newSeg, segResults[i,])
     }
@@ -61,26 +65,31 @@ segSize <- function(data, segResults, segLSDDPars, throttle = 100){
   
 }
 
-#### Input
 #######################################
+#########     LSDDCompare    ##########
+#######################################
+#
 # |------------|-----|-----------|
 #       L         G        R      
 # Compare Gap with two different time sequences
 # And return the one with higher similarity
+#
 #######################################
-# L, G, R, three time sequences to deal with: list("segStart" = , "segEnd" = )
-# G is the gap (seg size below the minimum)
-
-# d: dataset
-# sigmas: sigma matrix get from segmentation for all variables
-# lambdas
-
-#### Output
+# Input:
+#
+# L, G, R:three time sequences to deal with. list("segStart" = , "segEnd" = )
+#         G is the gap (seg size below the minimum)
+#
+# data:   dataset
+#
+# segLSDDPars: sigma and lambdas matrices
+#######################################
+# Output:
+#
 # "left"/"right", the side to merge
 
-mergeSeg <- function(L, G, R, data, segLSDDPars){
+LSDDCompare <- function(L, G, R, data, segLSDDPars){
   
-  # AD_GENERAL <- "AD2016_GENERAL" # column for all default settings
   sum_LSDD_G2L <- 0
   sum_LSDD_G2R <- 0
   
@@ -89,7 +98,8 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   # in this segments,
   # but LSDD requires at least 2 data points to carry on.
   # so just merge G to the shorter side
-  if(G$segEnd - G$segStart > 1 
+  if(
+       G$segEnd - G$segStart > 1 
     && L$segEnd - L$segStart > 1   
     && R$segEnd - R$segStart > 1   
   ){
@@ -120,22 +130,18 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
     }
   }
   
-  # print(sum_LSDD_G2L)
-  # print(sum_LSDD_G2R)
   # cat("Similary to left  is: ", sum_LSDD_G2L, "\n")
   # cat("Similary to right is: ", sum_LSDD_G2R, "\n")
   
-  result <- 'left'
   
   if(sum_LSDD_G2R < sum_LSDD_G2L){
     result <- 'right'
   }else if(sum_LSDD_G2L < sum_LSDD_G2R){
-    # return('left')
+    result <- 'left'
   }else{
-    # this is equal, very rare situation
-    # merge with shorter segResults
+    # this is equal, very rare situation, then merge with shorter segResults
     if(L$segEnd - L$segStart < R$segEnd - R$segStart){
-      # return('left')
+      result <- 'left'
     }
     else{
       result <- 'right'
@@ -147,14 +153,14 @@ mergeSeg <- function(L, G, R, data, segLSDDPars){
   result
 }
 
-# test
 
-# data <- data.frame( read.csv('./test5000.csv'))  
+
+####### test #######
+
+# data <- data.frame( read.csv('./data/test5000.csv'))  
 # data <- data[-1]
-#
-# segResults <- data.frame( read.csv('./segs5000.csv'))  
-# segLSDDPars <- data.frame( read.csv('./pars5000.csv'))  
-# 
+# segResults <- data.frame( read.csv('./data/segs5000.csv'))  
+# segLSDDPars <- data.frame( read.csv('./data/pars5000.csv'))  
 # segSize(data = data, segResults = segResults, segLSDDPars = segLSDDPars)
 
 
