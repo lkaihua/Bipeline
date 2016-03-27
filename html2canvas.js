@@ -824,7 +824,20 @@ function cloneCanvasContents(ownerDocument, documentClone) {
             if (clonedCanvas) {
                 clonedCanvas.width = canvas.width;
                 clonedCanvas.height = canvas.height;
-                clonedCanvas.getContext("2d").putImageData(canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+
+                // Kai:
+                // if in retina safari, use HD ==> result in same
+                // if(!!clonedCanvas.getContext("2d").webkitGetImageDataHD){
+                // 	clonedCanvas.getContext("2d").webkitPutImageDataHD(
+                // 		canvas.getContext("2d").webkitGetImageDataHD(0, 0, canvas.width, canvas.height), 0, 0);
+                // }
+                // else{
+            	clonedCanvas.getContext("2d").putImageData(
+            		canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+                // }
+                // clonedCanvas.style.width = canvas.scrollWidth + "px";
+                // clonedCanvas.style.height = canvas.scrollHeight + "px";
+
             }
         } catch(e) {
             log("Unable to copy canvas content from", canvas, e);

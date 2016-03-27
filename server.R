@@ -25,8 +25,8 @@ source('LSDDbiclustering.R')
 options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
-DEBUG_ON = F
-DEBUG_SEGPLOT_ON = F
+DEBUG_ON = T
+DEBUG_SEGPLOT_ON = T
 
 
 # varaible names
@@ -285,19 +285,10 @@ shinyServer(function(input, output, session) {
     filename = function() {
       paste('data-', Sys.Date(), '.csv', sep='')
     },
-    content = function(con) {
-      write.csv(v$data[-1], con)
+    content = function(file) {
+      write.csv(v$data[-1], file)
     }
   )
-
-  # output$downloadData <- downloadHandler(
-#   filename = function() {
-#     paste('data-', Sys.Date(), '.csv', sep='')
-#   },
-#   content = function(con) {
-#     write.csv(data, con)
-#   }
-# )
   
   
   ###################################################
@@ -1044,7 +1035,8 @@ shinyServer(function(input, output, session) {
     })
     
     get_biDensity <- function(){
-      par(mfrow=c(Ncol,1), mar=c(2.5,2,1.5,0))
+      # par(mfrow=c(Ncol,1), mar=c(2.5,2,1.5,2))
+      par(mfrow=c(Ncol,1), mar=c(0.7, 0.2,0,0))
       
       # if one variable is not linked to any bicluster
       # newColIndex[j] should == 0
@@ -1066,10 +1058,10 @@ shinyServer(function(input, output, session) {
             pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
             aYmax <- max(pdfB)
             if(newColIndex[j] > 0) {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ylab="", main="", ylim=c(0, aYmax))
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", ylim=c(0, aYmax))
             }
             else {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ylab="", main="", col="grey", ylim=c(0, aYmax))
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ann=FALSE, main="", col="grey", ylim=c(0, aYmax))
             }
           }
           else{
@@ -1077,18 +1069,19 @@ shinyServer(function(input, output, session) {
             pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
             aYmax <- max(pdfA, pdfB)
             if(newColIndex[j] > 0) {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ylab="", main="", ylim=c(0, aYmax))
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", ylim=c(0, aYmax))
               lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="red", type="l")
             }
             else {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ylab="", main="", col="grey", ylim=c(0, aYmax))
+              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", col="grey", ylim=c(0, aYmax))
               lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="grey", type="l")
             }
           }
           
         }
         else{
-          plot(density(data[,j]), main="")
+          # plot(density(data[,j]), main="", axes=FALSE)
+          plot(density(data[,j]), main="", xaxt="n", yaxt="n", ann=FALSE)
         }
       }
     }
@@ -1207,9 +1200,27 @@ shinyServer(function(input, output, session) {
       return()
     }
     else{
-      data.frame(pars, row.names = v$bifunc)
+      data.frame(
+        # pars, 
+        lapply(pars, function(i){as.character(i)}),
+        row.names = v$bifunc)
     }
   })
+
+  
+  # output$biSave2 <- downloadHandler(
+  #   filename = function() {
+  #     paste0('bicluster-', Sys.Date(), '.png')
+  #   },
+  #   content = function(file) {
+  #     # write.csv(js$, file)
+  #     png(file)
+  #     # data, fit, aSegStart, aSegEnd, segOn
+  #     print(get_biDygraph(v$data ,v$bifit, v$segments$segStart, v$segments$segEnd, TRUE))
+  #     dev.off()
+  #   }
+  # )
+
 
   #########################################################
   ###################### observe button ###################
@@ -1244,6 +1255,6 @@ shinyServer(function(input, output, session) {
   observeEvent(input$biSave, {
     js$saveBi()
   })
-
+  
   
 })

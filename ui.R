@@ -359,9 +359,9 @@ dashboardPage(
               ),
               actionButton("biPrev", label = "", icon = icon("arrow-left")),
               actionButton("biNext", label = "", icon = icon("arrow-right")),
+              # the popup is defined in shinyjsBi.js
               actionButton("biSave", label = "Save", icon = icon("download")),
-              
-              
+                    
               column(4,
                     style="float:right",
                     selectInput('biclusterSelector', 'Select bicluster(s)', choices = c("Please biclustering"), multiple = T)
@@ -372,8 +372,10 @@ dashboardPage(
             div(
               
               shinyjs::inlineCSS(list(
+                "#biHistory" = "background: #fff",
+                "#biHistory .biPiece" = "background: #fff",
                 "#biHistory .biPiece>img" = "float: right; ",
-                '#biHistory #biDensity' = "float: right"
+                "#biHistory #biDensity" = "float: right;"
               )),
               
               id = "biHistory",
