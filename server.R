@@ -1027,65 +1027,11 @@ shinyServer(function(input, output, session) {
       get_biDygraph(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd, segOn = segOn)
     })
     dygraph_div <- uiOutput('biDygraph')
-    # dygraph_div <- get_biDygraph(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd, segOn = segOn)
     
     # density functions
     output$biDensity <- renderPlot({
-      get_biDensity()
+      get_biDensity(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd)
     })
-    
-    get_biDensity <- function(){
-      # par(mfrow=c(Ncol,1), mar=c(2.5,2,1.5,2))
-      par(mfrow=c(Ncol,1), mar=c(0.7, 0.2,0,0))
-      
-      # if one variable is not linked to any bicluster
-      # newColIndex[j] should == 0
-      newColIndex <- colSums(fit@NumberxCol)
-      
-      for(j in 1:Ncol){
-        # biclustering result could not contain such infomation⁄
-        if(
-             any("newRowIndex" == slotNames(fit))    
-        ){
-          
-          rRemoved <- fit@rRemoved
-          newRowIndex <- fit@newRowIndex
-          
-          # if no rows are removed, then only plot new one
-          if(!length(rRemoved)){
-            # TODO: make sure it's right
-            # density(data[newRowIndex[[1]],j])$y works...
-            pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
-            aYmax <- max(pdfB)
-            if(newColIndex[j] > 0) {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", ylim=c(0, aYmax))
-            }
-            else {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfB, type="l", xaxt="n", yaxt="n", ann=FALSE, main="", col="grey", ylim=c(0, aYmax))
-            }
-          }
-          else{
-            pdfA <- density(data[rRemoved[[1]],j], from=0, to=1, n=2^10)$y
-            pdfB <- density(data[newRowIndex[[1]],j], from=0, to=1, n=2^10)$y
-            aYmax <- max(pdfA, pdfB)
-            if(newColIndex[j] > 0) {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", ylim=c(0, aYmax))
-              lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="red", type="l")
-            }
-            else {
-              plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", col="grey", ylim=c(0, aYmax))
-              lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="grey", type="l")
-            }
-          }
-          
-        }
-        else{
-          # plot(density(data[,j]), main="", axes=FALSE)
-          plot(density(data[,j]), main="", xaxt="n", yaxt="n", ann=FALSE)
-        }
-      }
-    }
-    
     density_div <- plotOutput('biDensity', width ="15%", height = "600px")
     
     
@@ -1099,6 +1045,8 @@ shinyServer(function(input, output, session) {
     
   })
   
+
+
   ###################### Try dygraph + distribution  ###############
   ##################################################################
   get_biDygraph <- function(data, fit, aSegStart, aSegEnd, segOn){
@@ -1130,8 +1078,6 @@ shinyServer(function(input, output, session) {
           dyAxis("y", drawGrid = FALSE, label = i) %>%
           dyOptions(colors = "black")
        
-        
-        
         
         # the biclusters selected will be shown
         if(is.null(selected)){
@@ -1188,6 +1134,78 @@ shinyServer(function(input, output, session) {
     all_dygraph <- tagAppendChild(all_dygraph, dygraph_div)
   }
   
+  get_biDensity <- function(data, fit, aSegStart, aSegEnd){
+
+    selected <- input$biclusterSelector
+
+    K <- fit@Number
+    # the biclusters selected will be shown
+    if(is.null(selected)){
+      range <- 1:K
+    }
+    else{
+      range <- as.numeric(selected)
+    }
+
+    Nrow <- nrow(data)
+    Ncol <- ncol(data)
+
+    # par(mfrow=c(Ncol,1), mar=c(2.5,2,1.5,2))
+    par(mfrow=c(Ncol,1), mar=c(0.7, 0.2,0,0))
+    
+    # if one variable is not linked to any bicluster
+    # newColIndex[j] should == 0
+    # newColIndex <- colSums(fit@NumberxCol)
+    
+    for(j in 1:Ncol){
+      # biclustering result could not contain such infomation
+      # then just plot distribution of all data
+      # 
+      # mainly for  PDF
+      if(
+           any("newRowIndex" == slotNames(fit))    
+      )
+      {
+        
+        newRowIndex <- fit@newRowIndex # the segments
+        segsIncluded <- fit@NumberxCol[, j] # whether a bicluster is included for a variable
+        segsRow <- newRowIndex[range][segsIncluded[range]] # the index of rows of selected biclusters
+        segsRowIndex <- c()
+        if(length(segsRow) > 0){
+          for(i in 1:length(segsRow)){
+            segsRowIndex <- c(segsRowIndex, segsRow[[i]])
+          }
+        }
+        segsRowIndex <- sort(unique(segsRowIndex))
+        
+        pdfA <- density(data[,j], from=0, to=1, n=2^10)$y
+        
+        if(!is.null(segsRowIndex)){
+          pdfB <- density(data[segsRowIndex,j], from=0, to=1, n=2^10)$y
+          aYmax <- max(pdfA, pdfB)
+        # if(TRUE || any(fit@NumberxCol == j)) {
+          plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", col="black", ylim=c(0, aYmax))
+          lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="red", type="l")
+        }
+        # if there are not segments for the selected biclusters
+        # only show over all density
+        else {
+          aYmax <- max(pdfA)
+          plot(x=seq(from=0, to=1, length.out=2^10), y=pdfA, type="l", xaxt="n", yaxt="n", ann=FALSE, ylab="", main="", col="black", ylim=c(0, aYmax))
+          # lines(x=seq(from=0, to=1, length.out=2^10), y=pdfB, col="grey", type="l")
+        }
+       
+        
+      }
+      # for other methods
+      #
+      # Baseline, LSDD
+      else{
+        # plot(density(data[,j]), main="", axes=FALSE)
+        plot(density(data[,j]), main="", xaxt="n", yaxt="n", ann=FALSE)
+      }
+    }
+  }
   
   output$biGraph <- renderUI({
     get_biGraph()
