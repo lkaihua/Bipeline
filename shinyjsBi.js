@@ -99,10 +99,11 @@ shinyjs.saveBi = function(){
       var a = document.createElement('a');
       a.setAttribute("download", "bicluster " + time.toString() + ".png");
       a.setAttribute("href", data);
+      a.style.display = "none";
       a.appendChild(img);
 
       document.body.appendChild(a);
-      // a.click();
+      a.click();
 
       // var img = document.createElement('img')
       // img.src = canvas.toDataURL()
@@ -116,22 +117,22 @@ shinyjs.saveBi = function(){
   });
 }
 
-// $(document).ready(function () {
-//     var content = '<p>A screenshot will be saved to your disk folder.</p>'
-//     if(!!window.devicePixelRatio
-//       && window.devicePixelRatio > 1
-//     ){
-//       // it is Retina screen
-//       content += "<p>Screenshots of higher quality are avaiable via screenshot shortcut <code>Mac: Command-Shift-4</code> since you are using a high pixel ratio screen.</p>"
-//     }
-//     setTimeout(function () {
-//         shinyBS.addTooltip('biSave', 'popover', {
-//             'placement': 'top',
-//             'trigger': 'hover',
-//             'title': 'Save plots',
-//             'content': content
-//         })
-//     }, 500)
-// });
+$(document).ready(function () {
+    var content = '<p>A screenshot will be saved to your disk folder.</p>'
+    if(!!window.devicePixelRatio
+      && window.devicePixelRatio > 1
+    ){
+      // it is Retina screen
+      content += "<p>Screenshots of higher quality are avaiable via screenshot shortcut <code>Mac: Command-Shift-4</code> since you are using a high pixel ratio screen.</p>"
+    }
+    setTimeout(function () {
+        shinyBS.addTooltip('biSave', 'popover', {
+            'placement': 'top',
+            'trigger': 'hover',
+            'title': 'Save plots',
+            'content': content
+        })
+    }, 500)
+});
 
 
