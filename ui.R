@@ -42,7 +42,7 @@ dashboardPage(
     tags$head(includeScript("download.js")),
     useShinyjs(),
     # extend js
-    extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg")),
+    extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg", "saveSeg")),
     extendShinyjs(text = jsCode2, functions = c("updateBi", "prevBi", "nextBi", "showBi", "saveBi")),
     tabItems(
 
@@ -230,10 +230,19 @@ dashboardPage(
           box(
             width = 4,
             numericInput('segMaxWindowSize', label="Maximum Window Size", value=500)
-            ,
+            ),
+
+          box(
+            width = 4,
             selectInput('segIndVars', 'Individual Setting', choices = c('Please select a dataset'), multiple = T)
             ,
             icon("info-circle"),"Create an individual setting tab for each variable selected."
+          ),
+          box(
+            width = 4,
+            numericInput('segThrottle', label="Minimum Segment Size", value=100)
+            ,
+            icon("info-circle"),"Shorter segments will be merged."
           ),
               
           
@@ -257,10 +266,15 @@ dashboardPage(
                 'Plots'
               ),
               bsButton("segPrev", label = "", icon = icon("arrow-left")),
-              bsButton("segNext", label = "", icon = icon("arrow-right"))
+              bsButton("segNext", label = "", icon = icon("arrow-right")),
+              actionButton("segSave", label = "Save", icon = icon("download"))
             ),
             
             # tabPanel('Now',
+            shinyjs::inlineCSS(list(
+              "#segHistory .segPiece" = "background: #fff"
+            )),
+            
             div(
               id = "segHistory",
               width = 12,
@@ -340,7 +354,7 @@ dashboardPage(
               )
             )
           ),
-          
+
           box(
             width = 4,
             actionButton('biButton', 'Start')

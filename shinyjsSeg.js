@@ -79,3 +79,62 @@ shinyjs.showSeg = function(i) {
   }
 }
 
+
+
+// dependencies: download.js, html2canvas.js
+shinyjs.saveSeg = function(){
+  target = $('#segHistory .segPiece:visible')
+  if(!target.length){
+    return false;
+  }
+  
+  time = new Date();
+  html2canvas(target, {
+    onrendered: function(canvas) {
+      // document.body.appendChild(canvas);
+      // var data = canvas.toDataURL("image/jpeg");
+      // var data = canvas.toDataURL("image/png")//.replace("image/png", "image/octet-stream");
+      var data = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+      // window.location.href = data;
+      var img = document.createElement('img');
+      img.src = data;
+
+      var a = document.createElement('a');
+      a.setAttribute("download", "bicluster " + time.toString() + ".png");
+      a.setAttribute("href", data);
+      a.style.display = "none";
+      a.appendChild(img);
+
+      document.body.appendChild(a);
+      a.click();
+
+      // var img = document.createElement('img')
+      // img.src = canvas.toDataURL()
+      // document.body.appendChild(img);
+      // shinyjs.pngBi = img
+      // window.open(canvas.toDataURL());
+      // download(data, "bicluster " + time.toString() + ".png", "image/png");
+    },
+    width: target.width(),
+    height: target.height()
+  });
+}
+
+$(document).ready(function () {
+    var content = '<p>A screenshot will be saved to your disk folder.</p>'
+    if(!!window.devicePixelRatio
+      && window.devicePixelRatio > 1
+    ){
+      // it is Retina screen
+      content += "<p>Screenshots of higher quality are avaiable via screenshot shortcut <code>Mac: Command-Shift-4</code> since you are using a high pixel ratio screen.</p>"
+    }
+    setTimeout(function () {
+        shinyBS.addTooltip('segSave', 'popover', {
+            'placement': 'top',
+            'trigger': 'hover',
+            'title': 'Save plots',
+            'content': content
+        })
+    }, 500)
+});
+

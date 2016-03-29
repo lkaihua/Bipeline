@@ -25,8 +25,8 @@ source('LSDDbiclustering.R')
 options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
-DEBUG_ON = T
-DEBUG_SEGPLOT_ON = T
+DEBUG_ON = F
+DEBUG_SEGPLOT_ON = F
 
 
 # varaible names
@@ -402,86 +402,6 @@ shinyServer(function(input, output, session) {
   })
   
   
-  # multi plot
-  # get_mulplot <- function(d, inputX, inputY) {
-  #   if(is.null(inputY))
-  #     return()
-  #   # cat('hi')
-  #   result_div <- div()
-  #   lapply(inputY, function(i){
-  #   
-  #     
-  #     if(input$plotX == 'DataIndex'){
-  #       DataIndex <- seq(from = 1, to = nrow(d))
-  #       target <- cbind(DataIndex, d[i])
-  #     }
-  #     else{
-  #       target <- d[c(inputX,i)]
-  #     }
-  #     
-  #     # 1. create a container
-  #     #     <div result/>
-  #     #         <div for dygraph1/>
-  #     #         <div for dygraph2/>
-  #     #
-  #     # 2. define output$dygraph1, output$dygraph2
-  #     tempName <- paste0("mulplot_dygraph_", i)
-  #     
-  #     dopOut <- dygraphOutput(tempName, width = "100%", height = "300px")
-  #     # dopOut <- tagAppendChild(dopOut, dop)
-  #     # dop <- dygraphOutput(dop, width = "200px", height = "200px")
-  #     # dopOut <- tagAppendChild(dopOut, dop)
-  #     result_div <- tagAppendChild(result_div, dopOut)
-  #     
-  #     output[[tempName]] <- renderDygraph({
-  #       dygraph(target, main = i, group = 'mulplot') %>%
-  #         dyOptions(colors = "#131688")
-  #     })
-  #   
-  #   })
-  # 
-  # }
-  
-  # correlation plot
-  # get_corplot <- function(d, inputX, inputY) {
-  #   if(is.null(inputY))
-  #     return()
-  #   
-  #   result_div <- div()
-  #   
-  #   lapply(inputY, function(i){
-  #     
-  #     if(inputX == 'DataIndex'){
-  #       DataIndex <- seq(from = 1, to = nrow(d))
-  #       target <- cbind(DataIndex, d[i])
-  #     }
-  #     else{
-  #       target <- d[c(inputX,i)]
-  #     }
-  #     
-  #     
-  #     # dygraph(target, main = i, group = 'corplot') %>%
-  #     #   dyOptions(strokeWidth = 0, drawPoints = T, pointSize = 5, fillAlpha = 0.3) %>%
-  #     
-  #     # plot(target)
-  #     # abline(lm(target[, 2] ~ target[, 1]), col='red', lwd = 2)
-  #     # ggplot(target)
-  #     tempName <- paste0("corplot_ggplot_", i)
-  #     dop <- plotOutput(tempName, width = "100%", height = "300px")
-  #     result_div <- tagAppendChild(result_div, dop)
-  # 
-  #     output[[tempName]] <- renderPlot({
-  #       ggplot(target, aes_string(x = inputX, y = i)) + 
-  #         geom_point() + 
-  #         geom_smooth(method = "lm", se = F) +
-  #         ggtitle(i)
-  #     })
-  #     
-  #   })
-  # }
-
-  
-  
   ###################################################
   ################# Segment Tab #####################
   ###################################################
@@ -527,11 +447,12 @@ shinyServer(function(input, output, session) {
         tempTitle,
         icon = tempIcon,
         fluidRow(
+          
           box(
             width = 12,
             
             sliderInput(paste0(i,"WindowSize"), "Window Size input:",
-                        min = 1, max = input$segMaxWindowSize, value = ifelse(is.null(tempWS), 100, tempWS)),
+                        min = 0, max = input$segMaxWindowSize, value = ifelse(is.null(tempWS), 100, tempWS)),
             
             sliderInput(paste0(i, "Overlap"), "Overlap input:",
                         min = 0, max = 1, value = ifelse(is.null(tempO), 0.5, tempO)),
@@ -626,6 +547,8 @@ shinyServer(function(input, output, session) {
   get_segplot <- eventReactive(input$segButton, {
     
     pars <- isolate(get_segparameters())
+    segThrottle <- isolate(input$segThrottle)
+
     v$segparsPrev <- pars
     
     d <- isolate(v$data)
@@ -715,7 +638,7 @@ shinyServer(function(input, output, session) {
                          segResults = segResults,
                          segLSDDPars = segLSDDPars,
                          # TODO: throttle should be customizable
-                         throttle = 100
+                         throttle = segThrottle
                         )
 
     # for biclustering usage
@@ -791,9 +714,9 @@ shinyServer(function(input, output, session) {
     js$nextSeg()
   })
   
-  # output$biTab <- renderText({
-  #   input$biMethod
-  # })
+  observeEvent(input$segSave, {
+    js$saveSeg()
+  })
 
   
   
@@ -1269,7 +1192,6 @@ shinyServer(function(input, output, session) {
     js$nextBi()
   })
 
-  
   observeEvent(input$biSave, {
     js$saveBi()
   })
