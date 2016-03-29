@@ -85,10 +85,11 @@ dashboardPage(
             fluidRow(
               box(
                 width = 12,
-                fileInput('file1', 'Choose CSV File',
-                          accept=c('text/csv',
-                                   'text/comma-separated-values,text/plain',
-                                   '.csv'))
+                uiOutput('fileImport')
+                # fileInput('file1', 'Choose CSV File',
+                #           accept=c('text/csv',
+                #                    'text/comma-separated-values,text/plain',
+                #                    '.csv'))
               )
             )
           ),
@@ -204,10 +205,10 @@ dashboardPage(
             # tabPanel("Data Table", tableOutput("table"))
             tabPanel("Pre-processed Data", DT::dataTableOutput('inputTable')),
             tabPanel("Summary", verbatimTextOutput("inputSummary")),
-            tabPanel(tagList(shiny::icon("download"), "Download"), 
+            tabPanel(tagList(shiny::icon("download"), "Save"), 
                       div(
                         style="text-align:center; padding:30px",
-                        downloadButton("processedDataset", label = "Download pre-processed data table as CSV")
+                        downloadButton("processedDataset", label = "Download pre-processed data table (.CSV)")
                       )
                     )
           )

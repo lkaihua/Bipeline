@@ -41,17 +41,60 @@ shinyServer(function(input, output, session) {
   ################# Import Tab  ####################
   ###################################################
   
+  v$fileImport <- 1
+  
+  updateFileInput <- function (name = NULL){
+    output$fileImport <- renderUI({
+      
+      index <- isolate(v$fileImport) # re-render
+      result <- div()
+      
+      result <- tagAppendChild(
+        result,
+        fileInput(paste0('file', index), 'Choose CSV File',accept=c('text/csv','text/comma-separated-values,text/plain','.csv'))
+      )
+
+      if(!is.null(name)){
+        result <- tagAppendChild(
+          result, 
+          div(
+            class="progress progress-striped",
+            
+            div(
+              class="progress-bar",
+              style="width: 100%",
+              name, 
+              " upload complete"
+            )
+          )
+        )
+      }
+
+      result
+      
+    })
+  }
+  
+  updateFileInput()
   
   # using reactive to dynamically import dataset
   dataInputRaw <- reactive({
     
     # get file from uploading
     if(!DEBUG_ON){
-      inFile <- input$file1
-  
-      if (is.null(inFile))
-        return(NULL)
-  
+      inFile <- input[[paste0('file', v$fileImport)]]
+      
+      # TICKY PART:
+      # 1. If initialized, `inFile` and `v$data` are both `NULL`
+      # 2. After each uploading, new `fileInput` is applied and
+      #    we want to keep previous updated data.
+      #    It also prevent recursive creation of new `fileInput`s.
+      
+      if (is.null(inFile)){
+        # return(NULL)
+        return(v$raw)
+      }
+      
       d <- data.frame( 
             read.csv(
               inFile$datapath, 
@@ -80,7 +123,12 @@ shinyServer(function(input, output, session) {
     else{
       v$data <- d  
     }
-  
+    
+    if (!is.null(v$data)){
+      v$fileImport <- v$fileImport + 1
+      get_fileImport(name = inFile$name)
+    }
+    
     # return rawData for display
     return(v$raw)
   })
@@ -106,6 +154,7 @@ shinyServer(function(input, output, session) {
       return()
     
     summary(d)
+    
   })
   
 
