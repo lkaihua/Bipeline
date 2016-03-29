@@ -276,6 +276,12 @@ dashboardPage(
               "#segHistory .segPiece" = "background: #fff"
             )),
             
+            # div(
+            #   id = "segProgress",
+            #   width = 12
+            #   
+            # ),
+            
             div(
               id = "segHistory",
               width = 12,

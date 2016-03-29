@@ -9,6 +9,7 @@ library(shiny)
 library(dygraphs)
 library(DT)
 library(ggplot2)
+library(scales)
 
 source('normalize.R')
 source('LSDD.R')
@@ -25,8 +26,8 @@ source('LSDDbiclustering.R')
 options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
-DEBUG_ON = T
-DEBUG_SEGPLOT_ON = T
+DEBUG_UPLOAD_ON = T
+DEBUG_SEGPLOT_ON = F
 
 
 # varaible names
@@ -80,9 +81,9 @@ shinyServer(function(input, output, session) {
   # using reactive to dynamically import dataset
   dataInputRaw <- reactive({
     
-    # get file from uploading
-    if(DEBUG_ON){
-      d <- data.frame( read.csv('./data/test5000.csv'))  
+    # upload debug
+    if(DEBUG_UPLOAD_ON){
+      d <- data.frame( read.csv('./data/test200.csv'))  
       d <- d[sapply(d, is.numeric)]
       v$data <- d
       return(v$data)
@@ -460,15 +461,23 @@ shinyServer(function(input, output, session) {
   output$segIndTabs <- renderUI({
     # get all individual variable names
     segIndVars <- input$segIndVars
-    # if(!length(segIndVars)){
-    # return()
-    # }
     
+    # if data is null, show general
+    # if selected variables less than all, show general
+    if(
+      is.null(v$data)
+      ||
+      length(segIndVars) < ncol(v$data)
+    ){
+      allTabs <- c(AD_GENERAL, segIndVars)
+    }else{
+      allTabs <- segIndVars
+    }
     # use AD prefix for general tab
     # to void overplace data variables
     # 
     # create dynamical number of tabs
-    tempTabs <- lapply(c(AD_GENERAL, segIndVars), function(i){
+    tempTabs <- lapply(allTabs, function(i){
 
       # TODO: hide general when all variables are selected
       if(i == AD_GENERAL){
@@ -546,8 +555,17 @@ shinyServer(function(input, output, session) {
       row.names = rowNames
     )
     
-    all <- c(AD_GENERAL, segIndVars)
-    for(i in all){
+    # all <- c(AD_GENERAL, segIndVars)
+    if(
+      is.null(v$data)
+      ||
+      length(segIndVars) < ncol(v$data)
+    ){
+      allTabs <- c(AD_GENERAL, segIndVars)
+    }else{
+      allTabs <- segIndVars
+    }
+    for(i in allTabs){
       for(j in rowNames){
         if(!is.null(input[[paste0(i, j)]])){
           pars[j,i] <- as.numeric(input[[paste0(i, j)]])
@@ -584,6 +602,8 @@ shinyServer(function(input, output, session) {
     colnames(pars)[colnames(pars) == AD_GENERAL] <- "General"
     pars
   })
+  
+  
 
   # Plot
   output$segplot <- renderUI({
@@ -609,9 +629,9 @@ shinyServer(function(input, output, session) {
     )
     segLSDDUnion <- c()
 
-    
+    Ncol <- ncol(d)
     # create n+1 rows in the plots
-    par(mfrow=c(ncol(d) + 1,1), mar=c(0,0,0,0))
+    par(mfrow=c(Ncol + 1,1), mar=c(0,0,0,0))
     
     ########## DEBUG HERE ##########
     if(DEBUG_SEGPLOT_ON){
@@ -640,39 +660,46 @@ shinyServer(function(input, output, session) {
     ########## DEBUG ENDS ##########
 
     # apply LSDD to each of variable one by one
-    for(col in colnames(d)){
-      # if the variable is not individually defined
-      if(!(col %in% colnames(pars))){
-        par <- AD_GENERAL
-      }else{
-        par <- col
-      }
-
-      LSDDResult<- LSDDsegment(d[col],
-                  windowSize=pars["WindowSize", par],
-                  overlap=pars["Overlap", par],
-                  thres=pars["Threshold", par],
-                  LSDDparameters=T,
-                  univariate=pars["Univariate", par])
-      print(col)
-      # dygraph(data.frame(x=1:nrow(d), y=d[,col]), main = "") %>%
-        # dyEvent("1950-6-30", "Korea", labelLoc = "bottom") %>%
-        # dyEvent(LSDDResult$segStart, color = 'blue')
-
-      plot(x=1:nrow(d), y=d[,col], type="l",
-           xaxt="n", yaxt="n",
-           xlab="time series index", ylab=par, main="")
-      abline(v = LSDDResult$segStart, col="blue")
-      abline(v = tail(LSDDResult$segEnd, 1), col="blue")
-      # normally: thisEnd == nextStart - 1 , or == endOfAll
-      # so no need to print all end event lines, since they are distracting
-      # abline(v = LSDDResult$segEnd, col="red")
+    withProgress(message = 'Segmenting in progress',
+                 detail = 'Please wait...', value = 0,
+    {
+      ####### Starting LSDD
+      for(j in 1:Ncol){
+        # if the variable is not individually defined
+        col <- colnames(d)[j]
+        if(!(col %in% colnames(pars))){
+          par <- AD_GENERAL
+        }else{
+          par <- col
+        }
   
-      # sigma/lambda are stable for one particular variable
-      segLSDDPars[col] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
-      segLSDDUnion <- c(segLSDDUnion, LSDDResult$segStart)
-
-    }
+        LSDDResult<- LSDDsegment(d[col],
+                    windowSize=pars["WindowSize", par],
+                    overlap=pars["Overlap", par],
+                    thres=pars["Threshold", par],
+                    LSDDparameters=T,
+                    univariate=pars["Univariate", par])
+        
+        # every time finish one varialbe 
+        # update the whole process while 1/N
+        incProgress(1/Ncol, detail = paste(percent(j/Ncol), "done..."))
+        
+        plot(x=1:nrow(d), y=d[,col], type="l",
+             xaxt="n", yaxt="n",
+             xlab="time series index", ylab=par, main="")
+        abline(v = LSDDResult$segStart, col="blue")
+        abline(v = tail(LSDDResult$segEnd, 1), col="blue")
+        # normally: thisEnd == nextStart - 1 , or == endOfAll
+        # so no need to print all end event lines, since they are distracting
+        # abline(v = LSDDResult$segEnd, col="red")
+    
+        # sigma/lambda are stable for one particular variable
+        segLSDDPars[col] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
+        segLSDDUnion <- c(segLSDDUnion, LSDDResult$segStart)
+  
+      }
+      ####### Finishing LSDD               
+    })
     
     segLSDDUnion <- sort(unique(segLSDDUnion))
     
@@ -1246,6 +1273,5 @@ shinyServer(function(input, output, session) {
   observeEvent(input$biSave, {
     js$saveBi()
   })
-  
   
 })
