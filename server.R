@@ -25,8 +25,8 @@ source('LSDDbiclustering.R')
 options(shiny.maxRequestSize = 50*1024^2)
 
 # global settings
-DEBUG_ON = F
-DEBUG_SEGPLOT_ON = F
+DEBUG_ON = T
+DEBUG_SEGPLOT_ON = T
 
 
 # varaible names
@@ -81,33 +81,35 @@ shinyServer(function(input, output, session) {
   dataInputRaw <- reactive({
     
     # get file from uploading
-    if(!DEBUG_ON){
-      inFile <- input[[paste0('file', v$fileImport)]]
-      
-      # TICKY PART:
-      # 1. If initialized, `inFile` and `v$data` are both `NULL`
-      # 2. After each uploading, new `fileInput` is applied and
-      #    we want to keep previous updated data.
-      #    It also prevent recursive creation of new `fileInput`s.
-      
-      if (is.null(inFile)){
-        # return(NULL)
-        return(v$raw)
-      }
-      
-      d <- data.frame( 
-            read.csv(
-              inFile$datapath, 
-              header=input$header, 
-              sep=input$sep,
-              quote=input$quote))
-    }
-    else{
-    # or debug deafult data
-      # d <- data.frame( read.csv('./data/test200.csv'))  
+    if(DEBUG_ON){
       d <- data.frame( read.csv('./data/test5000.csv'))  
-    }
+      d <- d[sapply(d, is.numeric)]
+      v$data <- d
+      return(v$data)
+    } 
     
+    inFile <- input[[paste0('file', v$fileImport)]]
+      
+    # TICKY PART:
+    # 1. If initialized, `inFile` and `v$data` are both `NULL`
+    # 2. After each uploading, new `fileInput` is applied and
+    #    we want to keep previous updated data.
+    #    It also prevent recursive creation of new `fileInput`s.
+    
+    if (is.null(inFile)){
+      # return(NULL)
+      return(v$raw)
+    }
+      
+    d <- data.frame( 
+          read.csv(
+            inFile$datapath, 
+            header=input$header, 
+            sep=input$sep,
+            quote=input$quote
+          )
+        )
+
     # dataFinal <- d
     v$raw <- d
     
@@ -126,7 +128,7 @@ shinyServer(function(input, output, session) {
     
     if (!is.null(v$data)){
       v$fileImport <- v$fileImport + 1
-      get_fileImport(name = inFile$name)
+      updateFileInput(name = inFile$name)
     }
     
     # return rawData for display
@@ -652,7 +654,7 @@ shinyServer(function(input, output, session) {
                   thres=pars["Threshold", par],
                   LSDDparameters=T,
                   univariate=pars["Univariate", par])
-
+      print(col)
       # dygraph(data.frame(x=1:nrow(d), y=d[,col]), main = "") %>%
         # dyEvent("1950-6-30", "Korea", labelLoc = "bottom") %>%
         # dyEvent(LSDDResult$segStart, color = 'blue')
