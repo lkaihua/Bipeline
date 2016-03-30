@@ -38,12 +38,20 @@ dashboardPage(
     )
   ),
   dashboardBody(
+    # import js
     tags$head(includeScript("html2canvas.js")),
-    tags$head(includeScript("download.js")),
+    # tags$head(includeScript("download.js")),
     useShinyjs(),
     # extend js
     extendShinyjs(text = jsCode, functions = c("updateSeg", "prevSeg", "nextSeg", "showSeg", "saveSeg")),
     extendShinyjs(text = jsCode2, functions = c("updateBi", "prevBi", "nextBi", "showBi", "saveBi")),
+    
+    # import global css
+    shinyjs::inlineCSS(list(
+      ".shiny-progress .progress" = "height:10px !important;"
+    )),
+    
+    
     tabItems(
 
       ######################################################
@@ -100,6 +108,8 @@ dashboardPage(
           shinyjs::inlineCSS(list(
             ".dataTables_wrapper" = "overflow-x: scroll; overflow-y: hidden"
           )),
+          
+          
           
           tabBox(
             width = 12,
@@ -418,11 +428,15 @@ dashboardPage(
         
         fluidRow(  
           box(
+            title = "About",
             width = 12,
-            'Hello World'
+            HTML('<p>Analysis Dashboard aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmenting and biclustering, which offer handy access of different methods and parameters applied to your data.</p>'),
+            HTML('<p>Author: Ricardo Cachucho <a href="mailto:r.cachucho@liacs.leidenuniv.nl">r.cachucho@liacs.leidenuniv.nl</a>, Kaihua liu <a href="mailto:k.liu.5@umail.leidenuniv.nl">k.liu.5@umail.leidenuniv.nl</a></p>')
           )
         )
       )
+      #</about>
+      
     )
   )
 )

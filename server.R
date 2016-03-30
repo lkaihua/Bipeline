@@ -83,7 +83,7 @@ shinyServer(function(input, output, session) {
     
     # upload debug
     if(DEBUG_UPLOAD_ON){
-      d <- data.frame( read.csv('./data/test200.csv'))  
+      d <- data.frame( read.csv('./data/test5000.csv'))  
       d <- d[sapply(d, is.numeric)]
       v$data <- d
       return(v$data)
@@ -673,12 +673,14 @@ shinyServer(function(input, output, session) {
           par <- col
         }
   
-        LSDDResult<- LSDDsegment(d[col],
-                    windowSize=pars["WindowSize", par],
-                    overlap=pars["Overlap", par],
-                    thres=pars["Threshold", par],
-                    LSDDparameters=T,
-                    univariate=pars["Univariate", par])
+        LSDDResult<- LSDDsegment(
+                      d[col],
+                      windowSize=pars["WindowSize", par],
+                      overlap=pars["Overlap", par],
+                      thres=pars["Threshold", par],
+                      LSDDparameters=T,
+                      univariate=pars["Univariate", par]
+                    )
         
         # every time finish one varialbe 
         # update the whole process while 1/N
@@ -733,31 +735,6 @@ shinyServer(function(input, output, session) {
     # dotted merged event line
     abline(v = setdiff(segLSDDUnion, segments$segStart), col="red", lty = 3)
 
-
-    # TODO: use dygraph in segmentation
-    # result_div <- lapply(colnames(data), function(i){
-    #   # bind biclusters into a time series
-    #   X <- cbind(seq(from = 1, to = Nrow))
-    #   target <- cbind(X, data[i])
-
-    #   # for each variable print time series
-    #   tempName <- paste0("biDygraph_",i)
-
-    #   output[[tempName]] <- renderDygraph({
-    #     g <- dygraph(target, main="", group="biDygraphs") %>%
-    #       dyAxis("x", drawGrid = FALSE, axisLabelColor="White") %>%
-    #       dyAxis("y", drawGrid = FALSE, label = i)
-
-    #     for(i in aSegStart){
-    #       g <- dyEvent(g, i, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
-    #     }
-
-    #     g
-
-    #   })
-
-    #   tempOut <- dygraphOutput(tempName, width = "80%", height = paste0(round(600/Ncol),"px"))
-    # })
 
   })
   
@@ -997,22 +974,27 @@ shinyServer(function(input, output, session) {
       aSegStart <- 1:Nrow
       aSegEnd <- 1:Nrow
     }
-
-
-    if(prefix == "baselineBi"){
-      fit <- baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
-    }
-    else if(prefix == "PDFBi"){
-      fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
-    }
-    else if(prefix == "LSDDBi"){
-      # segments should contain sigma and lambda for LSDD
-      # make as list, since sigma and segStart could have different length
-      segments <- as.list(segments)
-      segments$sigma <- v$LSDDPars$sigma
-      segments$lambda <- v$LSDDPars$lambda
-      fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
-    }
+    
+    progressBar = TRUE
+    withProgress(message = 'Biclustering in progress',
+                 detail = 'Please wait...', value = 0,
+      {
+        if(prefix == "baselineBi"){
+          fit <- baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
+        }
+        else if(prefix == "PDFBi"){
+          fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
+        }
+        else if(prefix == "LSDDBi"){
+          # segments should contain sigma and lambda for LSDD
+          # make as list, since sigma and segStart could have different length
+          segments <- as.list(segments)
+          segments$sigma <- v$LSDDPars$sigma
+          segments$lambda <- v$LSDDPars$lambda
+          fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
+        }
+      }
+    )
 
     # store this information
     v$bifit <- fit

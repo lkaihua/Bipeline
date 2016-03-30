@@ -11,8 +11,15 @@ source('LSDDsegmentation.R')
 segMerge <- function(data, segResults, segLSDDPars, throttle = 100){
   # result
   newSeg <- data.frame()
+  # book keeping
+  mergedRight <- FALSE
   
   for(i in 1:nrow(segResults)){
+    # check if previous seg was merged to the right
+    if(mergedRight == TRUE) {
+      mergedRight <- FALSE
+      next
+    }
     # sorry you are too small we have to kill you
     if(segResults[i, "segEnd"] - segResults[i, "segStart"] + 1 <= throttle){
       
@@ -37,7 +44,7 @@ segMerge <- function(data, segResults, segLSDDPars, throttle = 100){
       }
       
       if(mergeDirection == "left"){
-
+        
         # merge to left
         # edit last seg
         newSeg[nrow(newSeg), "segEnd"] <- segResults[i, "segEnd"]
@@ -50,9 +57,9 @@ segMerge <- function(data, segResults, segLSDDPars, throttle = 100){
                           "segStart" = segResults[i,"segStart"],
                           "segEnd" = segResults[i+1, "segEnd"]
                         )
-                       )
-        # change next seg to be deal in next loop
-        segResults[i+1, "segStart"] = segResults[i, "segStart"]
+        )
+        # skip seg to be deal in next loop
+        mergedRight <- TRUE
       }
     }
     # You are long enough to pass
@@ -62,6 +69,7 @@ segMerge <- function(data, segResults, segLSDDPars, throttle = 100){
   }
   
   newSeg <- unique(newSeg)
+  return(newSeg)
   
 }
 
@@ -99,33 +107,33 @@ LSDDCompare <- function(L, G, R, data, segLSDDPars){
   # but LSDD requires at least 2 data points to carry on.
   # so just merge G to the shorter side
   if(
-       G$segEnd - G$segStart > 1 
+    G$segEnd - G$segStart > 1 
     && L$segEnd - L$segStart > 1   
     && R$segEnd - R$segStart > 1   
   ){
-
+    
     for(i in 1:ncol(data)){
       # 1 x n matrix
       Gmatrix <- t(matrix(data[G$segStart:G$segEnd, i]))
       Lmatrix <- t(matrix(data[L$segStart:L$segEnd, i]))
       Rmatrix <- t(matrix(data[R$segStart:R$segEnd, i]))
-        
+      
       # cat(dim(Gmatrix), dim(Lmatrix), dim(Rmatrix))
       
       sum_LSDD_G2L <- sum(sum_LSDD_G2L, LSDDfast(
-          X1 = Gmatrix, 
-          X2 = Lmatrix,
-          sigma = segLSDDPars["sigma", i],    #sigma
-          lambda = segLSDDPars["lambda", i]   #lambda
-        )
+        X1 = Gmatrix, 
+        X2 = Lmatrix,
+        sigma = segLSDDPars["sigma", i],    #sigma
+        lambda = segLSDDPars["lambda", i]   #lambda
+      )
       )
       
       sum_LSDD_G2R <- sum(sum_LSDD_G2R, LSDDfast(
-          X1 = Gmatrix, 
-          X2 = Rmatrix,
-          sigma = segLSDDPars["sigma", i],    #sigma
-          lambda = segLSDDPars["lambda", i]   #lambda
-        )
+        X1 = Gmatrix, 
+        X2 = Rmatrix,
+        sigma = segLSDDPars["sigma", i],    #sigma
+        lambda = segLSDDPars["lambda", i]   #lambda
+      )
       )
     }
   }
@@ -148,19 +156,18 @@ LSDDCompare <- function(L, G, R, data, segLSDDPars){
     }
     
   }
-
+  
   # cat("Merge to ", result, "\n")
   result
 }
 
 
-
 ####### test #######
 
-# data <- data.frame( read.csv('./data/test5000.csv'))  
+# data <- data.frame( read.csv('./data/test5000.csv'))
 # data <- data[-1]
-# segResults <- data.frame( read.csv('./data/segs5000.csv'))  
-# segLSDDPars <- data.frame( read.csv('./data/pars5000.csv'))  
-# segSize(data = data, segResults = segResults, segLSDDPars = segLSDDPars)
+# segResults <- data.frame( read.csv('./data/segs5000.csv'))
+# segLSDDPars <- data.frame( read.csv('./data/pars5000.csv'))
+# segMerge(data = data, segResults = segResults, segLSDDPars = segLSDDPars, throttle = 100)
 
 

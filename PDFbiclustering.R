@@ -1,4 +1,10 @@
-PDFbiclustering <- function(data, segments, delta, k) {
+# Author: Ricardo Cachucho
+# Edited by Kai on March 2016
+#   
+# Update: add progressBar option
+###########################################################################################################
+
+PDFbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
   
   # use information from segmented data
   aSegStart <- segments$segStart
@@ -51,6 +57,12 @@ PDFbiclustering <- function(data, segments, delta, k) {
     score <- mean(KDEscores[newSegIndex,newColIndex], na.rm=FALSE)
     print(score)
     
+    # an estimation of all work
+    if(progressBar){
+      allProgress <- min(length(newSegIndex), k)
+      nowProgress <- (nClusters - 1)/allProgress
+    }
+    
     # iterations to remove columns and segments
     while(length(newSegIndex) != 0 && score > delta) {
       # bookeeping scores
@@ -78,6 +90,17 @@ PDFbiclustering <- function(data, segments, delta, k) {
       # calculate stop policy
       score <- mean(KDEscores[newSegIndex,newColIndex], na.rm=FALSE)
       print(score)
+      
+      # estimate stop time
+      if(progressBar){
+        scoreL <- length(scores)
+        if(scoreL > 1){
+          done <- scores[1] - scores[scoreL]
+          distance <- scores[1] - delta
+          value <- nowProgress + (1/allProgress)*(done/distance)
+          setProgress(value = value, detail = paste(percent(value),"done..."))
+        }
+      }
     }
     
     # output
