@@ -57,6 +57,9 @@ PDFbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
     score <- mean(KDEscores[newSegIndex,newColIndex], na.rm=FALSE)
     print(score)
     
+    # delta is between 0 and 1
+    delta <- delta * score
+    
     # an estimation of all work
     if(progressBar){
       allProgress <- min(length(newSegIndex), k)

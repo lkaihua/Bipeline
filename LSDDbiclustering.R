@@ -1,4 +1,10 @@
-LSDDbiclustering <- function(data, segments, delta, k) {
+# Author: Ricardo Cachucho
+# Edited by Kai on March 2016
+#   
+# Update: add progressBar option
+###########################################################################################################
+
+LSDDbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
 
   # use information from segmented data
   aSegStart <- segments$segStart
@@ -59,6 +65,15 @@ LSDDbiclustering <- function(data, segments, delta, k) {
       LSDDscores[newSegIndex,j] <- sapply(newSegIndex, function(i) LSDDfast(matrix(data[aSegStart[i]:aSegEnd[i],j], nrow=1, ncol=length(aSegStart[i]:aSegEnd[i])), matrix(data[newRowIndex,j], nrow=1, ncol=length(data[newRowIndex,j])), sigma=LSDDsigma[j], lambda=LSDDlambda[j]))
     score <- mean(LSDDscores[newSegIndex,newColIndex], na.rm=FALSE)
     print(score)
+
+    # delta is between 0 and 1
+    delta <- delta * score
+
+    # an estimation of all work
+    if(progressBar){
+      allProgress <- min(length(newSegIndex), k)
+      nowProgress <- (nClusters - 1)/allProgress
+    }
     
     # iterations to remove columns and segments
     while(length(newSegIndex) != 0 && score > delta) {
@@ -87,6 +102,18 @@ LSDDbiclustering <- function(data, segments, delta, k) {
         LSDDscores[newSegIndex,j] <- sapply(newSegIndex, function(i) LSDDfast(matrix(data[aSegStart[i]:aSegEnd[i],j], nrow=1, ncol=length(aSegStart[i]:aSegEnd[i])), matrix(data[newRowIndex,j], nrow=1, ncol=length(data[newRowIndex,j])), sigma=LSDDsigma[j], lambda=LSDDlambda[j]))
       score <- mean(LSDDscores[newSegIndex,newColIndex], na.rm=FALSE)
       print(score)
+
+      # estimate stop time
+      if(progressBar){
+        scoreL <- length(scores)
+        if(scoreL > 1){
+          done <- scores[1] - scores[scoreL]
+          distance <- scores[1] - delta
+          value <- nowProgress + (1/allProgress)*(done/distance)
+          setProgress(value = value, detail = paste(percent(value),"done..."))
+        }
+      }
+      
     }
   
     # output

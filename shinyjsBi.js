@@ -78,9 +78,9 @@ shinyjs.showBi = function(i) {
 }
 
 
-// dependencies: download.js, html2canvas.js
+// dependencies: html2canvas.js
 shinyjs.saveBi = function(){
-  target = $('#biHistory .biPiece:visible')
+  target = $('#biHistory')
   if(!target.length){
     return false;
   }

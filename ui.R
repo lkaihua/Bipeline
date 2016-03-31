@@ -205,8 +205,12 @@ dashboardPage(
               
               conditionalPanel("input.actionCon == 'Replace with'",
                                column(4,numericInput('replaceCon', label='.', value=0))
-              )
+              ),
+              column(3, 
+                style="padding-top:30px; font-weight: bold",
+                textOutput('rowSelected'))
             ),
+
             actionButton('goConditions', 'Go', class="goButton", icon = icon("arrow-circle-right"))
           ),
           
@@ -261,10 +265,27 @@ dashboardPage(
             width = 4,
             # tableOutput("segpars2")
             # ,
-            bsButton('segButton', label = 'Start')
+            
+            bsButton('segButton', label = 'Start', style="primary")
+            ,
+
+            div(
+              style="float:right",
+              downloadButton("segresultSave", label = "Save Segments"),
+              bsButton('segresultImport', label = 'Using Saved Segments', icon = icon("upload"), type="toggle")
+
+            )
+            ,
+            conditionalPanel("input.segresultImport",
+              div(
+                style="margin-top:2em",
+
+                fileInput('segresultImportFile', 'Choose CSV File', accept=c('text/csv','text/comma-separated-values,text/plain','.csv')),
+                tags$script('$( "#segresultImportFile" ).on( "click", function() { this.value = null; });')
+              )
+            )
           ),
 
-          
           # Plot
           box(
             width = 12,
@@ -323,8 +344,9 @@ dashboardPage(
               fluidRow(
                 box(
                   width = 12,
-                  checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
-                  ,
+                  column(12,
+                    checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
+                  ),
                   column(4,
                     numericInput('baselineBiDelta', label="Delta", value=0.01)
                   ),
@@ -343,9 +365,18 @@ dashboardPage(
               fluidRow(
                 box(
                   width = 12,
-                  checkboxInput('PDFBiSeg', 'Segmentation', TRUE),
+                  column(12,
+                    checkboxInput('PDFBiSeg', 'Segmentation', TRUE),
+                    tags$script(
+                      '$("#PDFBiSeg").attr("disabled", true)'
+                    )
+                  ),
                   column(6,
-                    numericInput('PDFBiDelta', label="Delta", value=0.01)
+                    # sliderInput('PDFBiDelta', "Delta",
+                               # min = 0, max = 1, value = 0.01)
+                    numericInput('PDFBiDelta', label="Delta", value=0.01),
+                    bsTooltip("PDFBiDelta", "Delta should be between (0,1).",
+                              "bottom", options = list(container = "body"))
                   ),
                   column(6,
                     numericInput('PDFBiK', label="K", value=10)
@@ -359,10 +390,16 @@ dashboardPage(
               fluidRow(
                 box(
                   width = 12,
-                  checkboxInput('LSDDBiSeg', 'Segmentation', TRUE)
-                  ,
+                  column(12,
+                    checkboxInput('LSDDBiSeg', 'Segmentation', TRUE),
+                    tags$script(
+                      '$("#LSDDBiSeg").attr("disabled", true)'
+                    )
+                  ),
                   column(6,
-                    numericInput('LSDDBiDelta', label="Delta", value=0.01)
+                    numericInput('LSDDBiDelta', label="Delta", value=0.01),
+                    bsTooltip("LSDDBiDelta", "Delta should be between (0,1).",
+                              "bottom", options = list(container = "body"))
                   ),
                   column(6,
                     numericInput('LSDDBiK', label="K", value=10)
@@ -374,7 +411,7 @@ dashboardPage(
 
           box(
             width = 4,
-            actionButton('biButton', 'Start')
+            bsButton('biButton', label = 'Start', style="primary")
           ),
           
           # Plot

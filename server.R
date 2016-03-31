@@ -22,11 +22,11 @@ source('PDFbiclustering.R')
 source('LSDDbiclustering.R')
 
 
-# change maximum file size from 5MB to 50MB
-options(shiny.maxRequestSize = 50*1024^2)
+# change maximum file size from 5MB to 100MB
+options(shiny.maxRequestSize = 100*1024^2)
 
 # global settings
-DEBUG_UPLOAD_ON = T
+DEBUG_UPLOAD_ON = F
 DEBUG_SEGPLOT_ON = F
 
 
@@ -335,10 +335,10 @@ shinyServer(function(input, output, session) {
 
   output$processedDataset <- downloadHandler(
     filename = function() {
-      paste('data-', Sys.Date(), '.csv', sep='')
+      paste('data-', Sys.time(), '.csv', sep='')
     },
     content = function(file) {
-      write.csv(v$data[-1], file)
+      write.csv(v$data, file, row.names=FALSE)
     }
   )
   
@@ -605,60 +605,102 @@ shinyServer(function(input, output, session) {
   
   
 
-  # Plot
+  # Using saved segments
+  segmentsUpload <- reactive({
+    inFile <- input$segresultImportFile
+    
+    if (is.null(inFile)){
+      return(FALSE)
+    }
+    
+    d <- data.frame( 
+      read.csv(
+        inFile$datapath
+      )
+    )
+    
+    v$segments <- d
+
+    return(TRUE)
+  })
+  
   output$segplot <- renderUI({
     output$segplot0 <- renderPlot({
-      get_segplot()
+      # debug mode
+      if(DEBUG_SEGPLOT_ON){
+        mock_segplot()
+      }
+      else
+      {
+        # when upload a seg result file
+        uploaded <- segmentsUpload()
+        
+        if(input$segresultImport){
+          if(uploaded){
+            mock_segplot()
+          }
+        }
+        else{
+          get_segplot()
+        }
+      }
     })
     plotOutput("segplot0", width="100%", height="600px")
   })
+  
+  observe({
+    imported <- input$segresultImport
+    if(imported){
+      shinyjs::disable("segButton")
+    }
+    else{
+      shinyjs::enable("segButton")
+    }
+  })
+  
+  mock_segplot <- function(){
 
-  # after clicking the "start" button
-  # get all
-  get_segplot <- eventReactive(input$segButton, {
-    
-    pars <- isolate(get_segparameters())
-    segThrottle <- isolate(input$segThrottle)
-
-    v$segparsPrev <- pars
-    
     d <- isolate(v$data)
-    
-    segLSDDPars <- data.frame(
-      row.names = c('sigma','lambda')
-    )
-    segLSDDUnion <- c()
 
     Ncol <- ncol(d)
     # create n+1 rows in the plots
     par(mfrow=c(Ncol + 1,1), mar=c(0,0,0,0))
     
-    ########## DEBUG HERE ##########
-    if(DEBUG_SEGPLOT_ON){
-      
-      for(col in colnames(d)){
-        # if the variable is not individually defined
-        if(!(col %in% colnames(pars))){
-          par <- AD_GENERAL
-        }else{
-          par <- col
-        }
-        plot(x=1:nrow(d), y=d[,col], type="l",
-             xaxt="n", yaxt="n",
-             xlab="time series index", ylab=par, main="")
-        abline(v = v$segments$segStart, col="blue")
-      }
-      
-      plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
-           xaxt="n", yaxt="n",
-           xlab="time series index", ylab="", main="")
-      # new segment event line
-      abline(v = v$segments$segStart, col="blue")
-      
-      return()
-    }
-    ########## DEBUG ENDS ##########
+    for(col in colnames(d)){
 
+      plot(x=1:nrow(d), y=d[,col], type="l",
+           xaxt="n", yaxt="n",
+           xlab="", ylab="", main="")
+      abline(v = v$segments$segStart, col="blue")
+    }
+    
+    plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
+         xaxt="n", yaxt="n",
+         xlab="", ylab="", main="")
+    # new segment event line
+    abline(v = v$segments$segStart, col="blue")
+    
+  }
+  
+  
+  # after clicking the "start" button
+  get_segplot <- eventReactive(input$segButton, {
+    
+    pars <- isolate(get_segparameters())
+    v$segparsPrev <- pars
+    segThrottle <- isolate(input$segThrottle)
+  
+    segLSDDPars <- data.frame(
+      row.names = c('sigma','lambda')
+    )
+    segLSDDUnion <- c()
+    
+    d <- isolate(v$data)
+
+    Ncol <- ncol(d)
+    # create n+1 rows in the plots
+    par(mfrow=c(Ncol + 1,1), mar=c(0,0,0,0))
+    
     # apply LSDD to each of variable one by one
     withProgress(message = 'Segmenting in progress',
                  detail = 'Please wait...', value = 0,
@@ -717,13 +759,12 @@ shinyServer(function(input, output, session) {
     segments <- segMerge(data = d,
                          segResults = segResults,
                          segLSDDPars = segLSDDPars,
-                         # TODO: throttle should be customizable
                          throttle = segThrottle
                         )
 
     # for biclustering usage
-    v$segments = segments
-    v$LSDDPars = segLSDDPars
+    v$segments <- segments
+    v$LSDDPars <- segLSDDPars
 
     # plotting union segment results
     plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
@@ -738,7 +779,15 @@ shinyServer(function(input, output, session) {
 
   })
   
-
+  
+  output$segresultSave <- downloadHandler(
+    filename = function() {
+      paste('segments-', Sys.time(), '.csv', sep='')
+    },
+    content = function(file) {
+      write.csv(v$segments, file, row.names=FALSE)
+    }
+  )
 
   #########################################################
   ###################### observe button ###################
@@ -804,7 +853,7 @@ shinyServer(function(input, output, session) {
     
   })
 
-
+  # Conditions
   observe({
     # get index of rows according to the conditions
     rowSelected <- tryCatch({
@@ -819,8 +868,9 @@ shinyServer(function(input, output, session) {
       return('')
     })
 
-    # updateNumericInput(session, 'numberCon', label=aIndex)
-    updateNumericInput(session, 'numberCon', label=rowSelected)
+    output$rowSelected <- renderText({
+      rowSelected
+    })
   })
   
     
@@ -960,7 +1010,11 @@ shinyServer(function(input, output, session) {
     Nrow <- nrow(data)
 
     # TODO when select segments on, check whether done segmentation
-    segOn = pars$Seg
+    segOn <- TRUE
+    if(!is.null(pars$Seg)){
+      segOn <- pars$Seg
+    }
+    
     if(segOn){
       segments <- v$segments
       aSegStart <- segments$segStart
@@ -989,9 +1043,12 @@ shinyServer(function(input, output, session) {
           # segments should contain sigma and lambda for LSDD
           # make as list, since sigma and segStart could have different length
           segments <- as.list(segments)
+          if(is.null(v$LSDDPars)){
+            return("NO Sigma & Lamba found for LSDD")
+          }
           segments$sigma <- v$LSDDPars$sigma
           segments$lambda <- v$LSDDPars$lambda
-          fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K)
+          fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
         }
       }
     )
@@ -1019,12 +1076,8 @@ shinyServer(function(input, output, session) {
     
     
     # organize result
-    result_div <- div()
-    result_div <- tagAppendChild(result_div, density_div)
-    result_div <- tagAppendChild(result_div, dygraph_div)
+    result_div <- tagAppendChildren(div(), density_div, dygraph_div)
     result_div
-    
-
     
   })
   
@@ -1047,9 +1100,40 @@ shinyServer(function(input, output, session) {
       
     dygraph_div <- lapply(colnames(data), function(i){
       # bind biclusters into a time series
-      X <- cbind(seq(from = 1, to = Nrow))
-      target <- cbind(X, data[i])
+      X <- seq(from = 1, to = Nrow)
+      Bicluster <- rep(NA, Nrow)
       
+      #the biclusters selected will be shown
+      if(is.null(selected)){
+        range <- 1:K
+      }
+      else{
+        range <- as.numeric(selected)
+      }
+
+      columns <- 1:Ncol
+      for(k in range) {
+        aStart <- aSegStart[fit@RowxNumber[,k]]
+        aEnd <- aSegEnd[fit@RowxNumber[,k]]
+        S <- length(aStart)
+        C <- fit@NumberxCol[k,]
+        for(ind in 1:S) {
+          # the column is included in the biclusters
+          if(any(which(i == colnames(data)) == columns[C])){
+            # cat('i ',i, 'start', aStart[i], 'end', aEnd[i], 'j ',j, '\n')
+            if(segOn){
+              Bicluster[aStart[ind]:aEnd[ind]] <- k
+            }
+            else{
+              # when uncheck using segments (only in basaeline biclustering)
+              # all shading parts become a single point and thus use event line
+              Bicluster[aStart[ind]] <- k
+            }
+          }
+        }
+      }
+      target <- data.frame(X, data[i], Bicluster)
+
       # for each variable print time series
       tempName <- paste0("biDygraph_", i, '_', now_time)
       
@@ -1057,18 +1141,21 @@ shinyServer(function(input, output, session) {
         
         # plot series
         g <- dygraph(target, main="", group="biDygraphs") %>%
-          dyAxis("x", drawGrid = FALSE, axisLabelFontSize=0, axisLabelColor="White") %>%
+          dyAxis("x", drawGrid = FALSE, labelWidth=0, labelHeight=0, axisLabelColor="White", axisLabelWidth=0, axisLabelFontSize=0, axisHeight=0) %>%
           dyAxis("y", drawGrid = FALSE, label = i) %>%
-          dyOptions(colors = "black")
-       
-        
+          dyAxis("y2", drawGrid = FALSE, label = "", axisLabelWidth=0) %>%
+          dyOptions(colors = "black") %>%
+          dyLegend(show = "onmouseover") %>%
+          dyHighlight(highlightCircleSize = 0, highlightSeriesBackgroundAlpha=0.9) %>%
+          dySeries("Bicluster", axis = "y2", strokeWidth=0)
+
         # the biclusters selected will be shown
-        if(is.null(selected)){
-          range <- 1:K
-        }
-        else{
-          range <- as.numeric(selected)
-        }
+        # if(is.null(selected)){
+        #   range <- 1:K
+        # }
+        # else{
+        #   range <- as.numeric(selected)
+        # }
 
         # add alpha
         # color <- add.alpha(color, alpha=0.4)
@@ -1076,7 +1163,7 @@ shinyServer(function(input, output, session) {
         # get colors
         # There are only 8 colors in set2
         colors = RColorBrewer::brewer.pal(colorMax, "Set2")
-
+        
         columns <- 1:Ncol
         for(k in range) {
           aStart <- aSegStart[fit@RowxNumber[,k]]
@@ -1086,7 +1173,6 @@ shinyServer(function(input, output, session) {
           for(ind in 1:S) {
             # the column is included in the biclusters
             if(any(which(i == colnames(data)) == columns[C])){
-              # cat('i ',i, 'start', aStart[i], 'end', aEnd[i], 'j ',j, '\n')
               if(segOn){
                 g <- dyShading(g, from = aStart[ind], to = aEnd[ind], color = colors[k %% colorMax + 1])
               }
@@ -1105,7 +1191,7 @@ shinyServer(function(input, output, session) {
             g <- dyEvent(g, segline, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
           }
         }
-        
+
         g
         
       })

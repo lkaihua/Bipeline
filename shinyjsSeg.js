@@ -81,9 +81,9 @@ shinyjs.showSeg = function(i) {
 
 
 
-// dependencies: download.js, html2canvas.js
+// dependencies: html2canvas.js
 shinyjs.saveSeg = function(){
-  target = $('#segHistory .segPiece:visible')
+  target = $('#segHistory')
   if(!target.length){
     return false;
   }
@@ -100,7 +100,7 @@ shinyjs.saveSeg = function(){
       img.src = data;
 
       var a = document.createElement('a');
-      a.setAttribute("download", "bicluster " + time.toString() + ".png");
+      a.setAttribute("download", "segments " + time.toString() + ".png");
       a.setAttribute("href", data);
       a.style.display = "none";
       a.appendChild(img);
