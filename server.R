@@ -32,6 +32,8 @@ DEBUG_SEGPLOT_ON = F
 
 # varaible names
 AD_GENERAL = 'AD2016General'
+MIN_PLOT_HEIGHT_EACH_VARIABLE = 20
+PLOT_HEIGHT_ALL = 600
 
 shinyServer(function(input, output, session) {
   
@@ -43,7 +45,8 @@ shinyServer(function(input, output, session) {
   ###################################################
   
   v$fileImport <- 1
-  
+  v$plotHeight <- PLOT_HEIGHT_ALL
+
   updateFileInput <- function (name = NULL){
     output$fileImport <- renderUI({
       
@@ -645,7 +648,10 @@ shinyServer(function(input, output, session) {
         }
       }
     })
-    plotOutput("segplot0", width="100%", height="600px")
+    # maximum variables
+    # if a very big dataset was uploaded, should expand the height
+
+    plotOutput("segplot0", width="100%", height=paste0(v$plotHeight,"px"))
   })
   
   observe({
@@ -825,7 +831,7 @@ shinyServer(function(input, output, session) {
   
   
   #########################################################
-  ################ observe column names ###################
+  ################ observe column names/numbers ###########
   #########################################################
   observe({
    
@@ -850,6 +856,15 @@ shinyServer(function(input, output, session) {
     
     # TODO: limit the size of the window smaller than the size of all data
     
+    nCol <- ncol(v$data)
+    
+    if(
+      !is.null(nCol)
+      &&
+      nCol > PLOT_HEIGHT_ALL / MIN_PLOT_HEIGHT_EACH_VARIABLE
+    ){
+      v$plotHeight <- nCol * MIN_PLOT_HEIGHT_EACH_VARIABLE
+    }
     
   })
 
@@ -1072,7 +1087,7 @@ shinyServer(function(input, output, session) {
     output$biDensity <- renderPlot({
       get_biDensity(data = data, fit = fit, aSegStart = aSegStart, aSegEnd = aSegEnd)
     })
-    density_div <- plotOutput('biDensity', width ="15%", height = "600px")
+    density_div <- plotOutput('biDensity', width ="15%", height = paste0(v$plotHeight, "px"))
     
     
     # organize result
@@ -1196,7 +1211,7 @@ shinyServer(function(input, output, session) {
         
       })
       
-      dygraphOutput(tempName, width = "85%", height = paste0(round(600/Ncol),"px"))
+      dygraphOutput(tempName, width = "85%", height = paste0(round(v$plotHeight/Ncol),"px"))
       
     })
 
