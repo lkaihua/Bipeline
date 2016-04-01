@@ -187,7 +187,8 @@ dashboardPage(
             height = "200px",
             title = "Normalization",
             # checkboxInput('normalizing', 'Normalizing', FALSE),
-            radioButtons('normalizing', 'Normalization',c('ON'=T,'OFF'=F),F),
+            radioButtons('normalizing', 'Normalization',c('ON'=T,'OFF'=F),T)
+            ,
             actionButton('goNormalizing', 'Go', class="goButton", icon = icon("arrow-circle-right"))
           ),
           
@@ -244,7 +245,13 @@ dashboardPage(
           
           box(
             width = 4,
-            numericInput('segMaxWindowSize', label="Maximum Window Size", value=500)
+            column(6,
+              style="padding-left:0",
+              numericInput('segMinWindowSize', label="Minimum Window Size", value=2, min = 2)
+            ),
+            column(6,
+              numericInput('segMaxWindowSize', label="Maximum Window Size", value=500, min = 2)
+              )
             ),
 
           box(
@@ -348,47 +355,50 @@ dashboardPage(
                     checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
                   ),
                   column(12,
-                    selectInput('baselineBiMethod', 'Method', choices = c('BCCC','BCBimax', 'BCrepBimax'), multiple = F)
+                    selectInput('baselineBiMethod', 'Method', choices = c('BCCC','BCBimax'
+                      # , 'BCrepBimax'
+                      ), multiple = F)
                   ),
                   conditionalPanel(
                     'input.baselineBiMethod == "BCCC"',
                     column(4,
-                      numericInput('baselineBiDelta', label="Delta", value=0.01)
+                      numericInput('baselineBiBCCCDelta', label="Delta", value=0.01)
                     ),
                     column(4,
-                      numericInput('baselineBiAlpha', label="Alpha", value=1)
+                      numericInput('baselineBiBCCCAlpha', label="Alpha", value=1)
                     ),
                     column(4,
-                      numericInput('baselineBiK', label="K", value=100)
+                      numericInput('baselineBiBCCCK', label="K", value=100)
                     )
                   ),
                   conditionalPanel(
                     'input.baselineBiMethod == "BCBimax"',
-                    column(3,
-                      numericInput('baselineBiMinr', label="Minr", value=4)
+                    column(4,
+                      numericInput('baselineBiBCBimaxMinr', label="Minr", value=2)
                     ),
-                    column(3,
-                      numericInput('baselineBiMinc', label="Minc", value=4)
+                    column(4,
+                      numericInput('baselineBiBCBimaxMinc', label="Minc", value=2)
                     ),
-                    column(3,
-                      numericInput('baselineBiK', label="K", value=10)
-                    )
-                  ),
-                  conditionalPanel(
-                    'input.baselineBiMethod == "BCrepBimax"',
-                    column(3,
-                      numericInput('baselineBiMinr', label="Minr", value=4)
-                    ),
-                    column(3,
-                      numericInput('baselineBiMinc', label="Minc", value=4)
-                    ),
-                    column(3,
-                      numericInput('baselineBiMaxc', label="Maxc", value=10)
-                    ),
-                    column(3,
-                      numericInput('baselineBiK', label="K", value=10)
+                    column(4,
+                      numericInput('baselineBiBCBimaxK', label="K", value=100)
                     )
                   )
+                  # ,
+                  # conditionalPanel(
+                  #   'input.baselineBiMethod == "BCrepBimax"',
+                  #   column(3,
+                  #     numericInput('baselineBiMinr', label="Minr", value=2)
+                  #   ),
+                  #   column(3,
+                  #     numericInput('baselineBiMinc', label="Minc", value=2)
+                  #   ),
+                  #   column(3,
+                  #     numericInput('baselineBiMaxc', label="Maxc", value=12)
+                  #   ),
+                  #   column(3,
+                  #     numericInput('baselineBiK', label="K", value=100)
+                  #   )
+                  # )
                   
                   
                 )
@@ -396,7 +406,7 @@ dashboardPage(
             )
             ,
             tabPanel(
-              "PDF",
+              "BiclusTS",
               fluidRow(
                 box(
                   width = 12,
@@ -411,7 +421,7 @@ dashboardPage(
                                # min = 0, max = 1, value = 0.01)
                     numericInput('PDFBiDelta', label="Delta", value=0.01),
                     bsTooltip("PDFBiDelta", "Delta should be between (0,1).",
-                              "bottom", options = list(container = "body"))
+                              "bottom")
                   ),
                   column(6,
                     numericInput('PDFBiK', label="K", value=10)
@@ -419,29 +429,30 @@ dashboardPage(
                 )
               )
             )
-            ,
-            tabPanel(
-              "LSDD",
-              fluidRow(
-                box(
-                  width = 12,
-                  column(12,
-                    checkboxInput('LSDDBiSeg', 'Segmentation', TRUE),
-                    tags$script(
-                      '$("#LSDDBiSeg").attr("disabled", true)'
-                    )
-                  ),
-                  column(6,
-                    numericInput('LSDDBiDelta', label="Delta", value=0.01),
-                    bsTooltip("LSDDBiDelta", "Delta should be between (0,1).",
-                              "bottom", options = list(container = "body"))
-                  ),
-                  column(6,
-                    numericInput('LSDDBiK', label="K", value=10)
-                  )
-                )
-              )
-            )
+
+            # ,
+            # tabPanel(
+            #   "LSDD",
+            #   fluidRow(
+            #     box(
+            #       width = 12,
+            #       column(12,
+            #         checkboxInput('LSDDBiSeg', 'Segmentation', TRUE),
+            #         tags$script(
+            #           '$("#LSDDBiSeg").attr("disabled", true)'
+            #         )
+            #       ),
+            #       column(6,
+            #         numericInput('LSDDBiDelta', label="Delta", value=0.01),
+            #         bsTooltip("LSDDBiDelta", "Delta should be between (0,1).",
+            #                   "bottom", options = list(container = "body"))
+            #       ),
+            #       column(6,
+            #         numericInput('LSDDBiK', label="K", value=10)
+            #       )
+            #     )
+            #   )
+            # )
           ),
 
           box(

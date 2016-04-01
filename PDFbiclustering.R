@@ -58,7 +58,7 @@ PDFbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
     print(score)
     
     # delta is between 0 and 1
-    delta <- delta * score
+    newDelta <- delta * score
     
     # an estimation of all work
     if(progressBar){
@@ -67,7 +67,7 @@ PDFbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
     }
     
     # iterations to remove columns and segments
-    while(length(newSegIndex) != 0 && score > delta) {
+    while(length(newSegIndex) != 0 && score > newDelta) {
       # bookeeping scores
       scores <- c(scores, score)
       
@@ -99,7 +99,7 @@ PDFbiclustering <- function(data, segments, delta, k, progressBar=FALSE) {
         scoreL <- length(scores)
         if(scoreL > 1){
           done <- scores[1] - scores[scoreL]
-          distance <- scores[1] - delta
+          distance <- scores[1] - newDelta
           value <- nowProgress + (1/allProgress)*(done/distance)
           setProgress(value = value, detail = paste(percent(value),"done..."))
         }

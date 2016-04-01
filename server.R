@@ -15,12 +15,9 @@ source('normalize.R')
 source('LSDD.R')
 source('LSDDsegmentation.R')
 source('segMerge.R')
-
-# source('baselineAggregateBiclustering.R')
 source('baselineBiclustering.R')
 source('PDFbiclustering.R')
-source('LSDDbiclustering.R')
-
+# source('LSDDbiclustering.R')
 
 # change maximum file size from 5MB to 100MB
 options(shiny.maxRequestSize = 100*1024^2)
@@ -28,7 +25,6 @@ options(shiny.maxRequestSize = 100*1024^2)
 # global settings
 DEBUG_UPLOAD_ON = F
 DEBUG_SEGPLOT_ON = F
-
 
 # varaible names
 AD_GENERAL = 'AD2016General'
@@ -40,12 +36,14 @@ shinyServer(function(input, output, session) {
   # session data storage
   v <- reactiveValues()
 
+  # init
+  v$fileImport <- 1
+  v$plotHeight <- PLOT_HEIGHT_ALL
+
   ###################################################
   ################# Import Tab  ####################
   ###################################################
-  
-  v$fileImport <- 1
-  v$plotHeight <- PLOT_HEIGHT_ALL
+
 
   updateFileInput <- function (name = NULL){
     output$fileImport <- renderUI({
@@ -127,7 +125,10 @@ shinyServer(function(input, output, session) {
       v$data <- NULL
     }
     else{
-      v$data <- d  
+      v$data <- d
+      # comment out to disable normalization by default
+      # and change ui:normailizing to FALSE
+      normalizingData(TRUE)
     }
     
     if (!is.null(v$data)){
@@ -171,8 +172,11 @@ shinyServer(function(input, output, session) {
   
   # click go button for normalizing
   observeEvent(input$goNormalizing, {
-    # user choose to normailizing
-    if(input$normalizing){
+    normalizingData(input$normalizing)
+  })
+
+  normalizingData <- function(normalizing){
+    if(normalizing){
       # record the maximum for all varaibles to recover
       
       tempMax <- sapply(colnames(v$data),function(i){
@@ -181,7 +185,7 @@ shinyServer(function(input, output, session) {
       tempMin <- sapply(colnames(v$data),function(i){
         min(v$data[i])
       })
-
+      
       if(
         length(which(tempMax == 1)) == length(tempMax)    # all tempMax == 1 
         && length(which(tempMin == 0)) == length(tempMin) # all tempMin == 0 
@@ -195,7 +199,6 @@ shinyServer(function(input, output, session) {
         v$dataMin <- tempMin
         v$data <- normalizeTS(v$data)
       }
-      
     }
     # user choose to go to original data
     else{
@@ -205,10 +208,9 @@ shinyServer(function(input, output, session) {
           v$data[i] <- v$data[i] * (v$dataMax[i] - v$dataMin[i]) + v$dataMin[i]
         }
       }
-      v$data
     }
-    
-  })
+    return(v$data)
+  }
   
   # remove excluding variables
   observeEvent(input$confirmExcludingVar, {
@@ -506,6 +508,14 @@ shinyServer(function(input, output, session) {
       # tempT <- NULL
       # tempU <- NULL
       
+      minWS <- input$segMinWindowSize
+      if(is.null(minWS) || is.na(minWS) || minWS < 2){
+        minWS <- 2
+      }
+      maxWS <- input$segMaxWindowSize
+      if(is.null(maxWS) || is.na(maxWS) || maxWS <= minWS){
+        maxWS <- minWS + 100
+      }
       tabPanel(
         tempTitle,
         icon = tempIcon,
@@ -515,7 +525,7 @@ shinyServer(function(input, output, session) {
             width = 12,
             
             sliderInput(paste0(i,"WindowSize"), "Window Size input:",
-                        min = 0, max = input$segMaxWindowSize, value = ifelse(is.null(tempWS), 100, tempWS)),
+                        min = minWS, max = maxWS, value = ifelse(is.null(tempWS), 100, tempWS)),
             
             sliderInput(paste0(i, "Overlap"), "Overlap input:",
                         min = 0, max = 1, value = ifelse(is.null(tempO), 0.5, tempO)),
@@ -998,7 +1008,7 @@ shinyServer(function(input, output, session) {
     if(func == "Baseline"){
       prefix <- "baselineBi"  
     }
-    else if(func == "PDF"){
+    else if(func == "BiclusTS"){
       prefix <- "PDFBi"  
     }
     else if(func == "LSDD"){
@@ -1008,7 +1018,11 @@ shinyServer(function(input, output, session) {
     # all options here
     # if the option name is missing in one tab
     # it would be null and discarded
-    parOptions <- c('Seg', 'Method' ,'Delta', 'Alpha', 'Minr', 'Minc', 'Maxc','K')
+    parOptions <- c('Seg', 'Method' ,
+                    'Delta', 'Alpha', 'K',
+                    'BCCCDelta', 'BCCCAlpha', 'BCCCK',
+                    'BCBimaxMinr', 'BCBimaxMinc', 'BCBimaxK'
+                  )
     pars <- list()
     for(par in parOptions){
       temp <- input[[ paste0(prefix, par) ]] 
@@ -1051,31 +1065,32 @@ shinyServer(function(input, output, session) {
         if(prefix == "baselineBi"){
           fit <- switch(pars$Method,
             'BCCC' = {
-              baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
+              baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$BCCCDelta, alpha=pars$BCCCAlpha, number=pars$BCCCK)
             },
             'BCBimax' = {
-              baselineBiclustering(data=data, segments=segments, method=BCBimax(), minr=pars$Minr, minc=pars$Minc, number=pars$K)
-            },
-            'BCrepBimax' = {
-              baselineBiclustering(data=data, segments=segments, method=BCrepBimax(), minr=pars$Minr, minc=pars$Minc, number=pars$K, maxc=pars$Maxc)
+              baselineBiclustering(data=data, segments=segments, method=BCBimax(), minr=pars$BCBimaxMinr, minc=pars$BCBimaxMinc, number=pars$BCBimaxK)
             }
+            # ,
+            # 'BCrepBimax' = {
+            #   baselineBiclustering(data=data, segments=segments, method=BCrepBimax(), minr=pars$Minr, minc=pars$Minc, number=pars$K, maxc=pars$Maxc)
+            # }
           )
 
         }
         else if(prefix == "PDFBi"){
           fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
         }
-        else if(prefix == "LSDDBi"){
-          # segments should contain sigma and lambda for LSDD
-          # make as list, since sigma and segStart could have different length
-          segments <- as.list(segments)
-          if(is.null(v$LSDDPars)){
-            return("NO Sigma & Lamba found for LSDD")
-          }
-          segments$sigma <- v$LSDDPars$sigma
-          segments$lambda <- v$LSDDPars$lambda
-          fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
-        }
+        # else if(prefix == "LSDDBi"){
+        #   # segments should contain sigma and lambda for LSDD
+        #   # make as list, since sigma and segStart could have different length
+        #   segments <- as.list(segments)
+        #   if(is.null(v$LSDDPars)){
+        #     return("NO Sigma & Lamba found for LSDD")
+        #   }
+        #   segments$sigma <- v$LSDDPars$sigma
+        #   segments$lambda <- v$LSDDPars$lambda
+        #   fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
+        # }
       }
     )
 
@@ -1084,9 +1099,14 @@ shinyServer(function(input, output, session) {
 
     # update bicluster selector
     K <- fit@Number
-    choices <- 1:K
-    names(choices) <- paste0("Bicluster #", c(1:K))
-    updateSelectInput(session, "biclusterSelector", choices = choices)
+    if(K == 0){
+      #There was no cluster found
+      updateSelectInput(session, "biclusterSelector", choices = c("No Bicluster Found"))
+    }else{
+      choices <- 1:K
+      names(choices) <- paste0("Bicluster #", c(1:K))
+      updateSelectInput(session, "biclusterSelector", choices = choices)
+    }
     
     # dygraph of series and biclusters
     output$biDygraph <- renderUI({
@@ -1212,11 +1232,11 @@ shinyServer(function(input, output, session) {
         }
         
         # only show segment line when seg box checked
-        if(segOn){
-          for(segline in aSegStart){
-            g <- dyEvent(g, segline, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
-          }
-        }
+        # if(segOn){
+        #   for(segline in aSegStart){
+        #     g <- dyEvent(g, segline, labelLoc = "bottom", color = "blue",  strokePattern = "solid")
+        #   }
+        # }
 
         g
         
