@@ -6,7 +6,7 @@
 library("biclust")
 
 # Ploting the results of Cheng and Church biclustering on a time series
-baselineBiclustering <- function(data, segments=NULL, method=BCCC(), delta=0.01, alpha=1, number=100) {
+baselineBiclustering <- function(data, segments=NULL, method=BCCC(), ...) {
   
   # if segments are NULL, then skip aggregate part
   if(is.null(segments)){
@@ -25,7 +25,7 @@ baselineBiclustering <- function(data, segments=NULL, method=BCCC(), delta=0.01,
     }
   }
   
-  fit <- biclust(AggregateData, method=method, delta=delta, alpha=alpha, number=number)
+  fit <- biclust(AggregateData, method=method, ...)
   
   
   # plot is done in another module

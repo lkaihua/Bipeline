@@ -1008,7 +1008,7 @@ shinyServer(function(input, output, session) {
     # all options here
     # if the option name is missing in one tab
     # it would be null and discarded
-    parOptions <- c('Seg', 'Delta', 'Alpha', 'K')
+    parOptions <- c('Seg', 'Method' ,'Delta', 'Alpha', 'Minr', 'Minc', 'Maxc','K')
     pars <- list()
     for(par in parOptions){
       temp <- input[[ paste0(prefix, par) ]] 
@@ -1049,7 +1049,18 @@ shinyServer(function(input, output, session) {
                  detail = 'Please wait...', value = 0,
       {
         if(prefix == "baselineBi"){
-          fit <- baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
+          fit <- switch(pars$Method,
+            'BCCC' = {
+              baselineBiclustering(data=data, segments=segments, method=BCCC(), delta=pars$Delta, alpha=pars$Alpha, number=pars$K)
+            },
+            'BCBimax' = {
+              baselineBiclustering(data=data, segments=segments, method=BCBimax(), minr=pars$Minr, minc=pars$Minc, number=pars$K)
+            },
+            'BCrepBimax' = {
+              baselineBiclustering(data=data, segments=segments, method=BCrepBimax(), minr=pars$Minr, minc=pars$Minc, number=pars$K, maxc=pars$Maxc)
+            }
+          )
+
         }
         else if(prefix == "PDFBi"){
           fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)

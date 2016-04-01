@@ -347,15 +347,50 @@ dashboardPage(
                   column(12,
                     checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
                   ),
-                  column(4,
-                    numericInput('baselineBiDelta', label="Delta", value=0.01)
+                  column(12,
+                    selectInput('baselineBiMethod', 'Method', choices = c('BCCC','BCBimax', 'BCrepBimax'), multiple = F)
                   ),
-                  column(4,
-                    numericInput('baselineBiAlpha', label="Alpha", value=1)
+                  conditionalPanel(
+                    'input.baselineBiMethod == "BCCC"',
+                    column(4,
+                      numericInput('baselineBiDelta', label="Delta", value=0.01)
+                    ),
+                    column(4,
+                      numericInput('baselineBiAlpha', label="Alpha", value=1)
+                    ),
+                    column(4,
+                      numericInput('baselineBiK', label="K", value=100)
+                    )
                   ),
-                  column(4,
-                    numericInput('baselineBiK', label="K", value=100)
+                  conditionalPanel(
+                    'input.baselineBiMethod == "BCBimax"',
+                    column(3,
+                      numericInput('baselineBiMinr', label="Minr", value=4)
+                    ),
+                    column(3,
+                      numericInput('baselineBiMinc', label="Minc", value=4)
+                    ),
+                    column(3,
+                      numericInput('baselineBiK', label="K", value=10)
+                    )
+                  ),
+                  conditionalPanel(
+                    'input.baselineBiMethod == "BCrepBimax"',
+                    column(3,
+                      numericInput('baselineBiMinr', label="Minr", value=4)
+                    ),
+                    column(3,
+                      numericInput('baselineBiMinc', label="Minc", value=4)
+                    ),
+                    column(3,
+                      numericInput('baselineBiMaxc', label="Maxc", value=10)
+                    ),
+                    column(3,
+                      numericInput('baselineBiK', label="K", value=10)
+                    )
                   )
+                  
+                  
                 )
               )
             )
