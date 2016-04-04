@@ -143,13 +143,30 @@ shinyServer(function(input, output, session) {
 
   # data table with navigation tab
   # renderTable will kill the browser when the data is large
-  output$rawTable <- DT::renderDataTable({
+  output$rawTable <- renderUI({
+    
     d <- dataInputRaw()
     
-    if (is.null(d))
-      return()
-    
-    DT::datatable(d, options = list(pageLength = 20))
+    if (is.null(d)){
+      
+      fluidRow(box(
+        width = 12,
+        background ="green",
+        
+        tags$h4(icon('bullhorn'),"Welcome"),
+        HTML("Please upload a dataset to start.")
+        
+      ))
+    }
+    else{
+      
+      output$rawTable0 <- DT::renderDataTable({
+        
+        DT::datatable(d, options = list(pageLength = 20))
+      })
+      
+      DT::dataTableOutput('rawTable0')
+    }
   })
     
    

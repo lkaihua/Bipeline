@@ -110,13 +110,13 @@ dashboardPage(
           )),
           
           
-          
           tabBox(
             width = 12,
-           # tabPanel("Data Table", tableOutput("table"))
-            tabPanel("Raw Data", DT::dataTableOutput('rawTable')),
+            tabPanel("Raw Data", uiOutput("rawTable")),
             tabPanel("Summary", verbatimTextOutput("rawSummary"))
           )
+        
+         
         )
       ),
       # </import>
@@ -131,8 +131,9 @@ dashboardPage(
           box(
             width = 8,
             title = "Options",
-            selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T),
-            selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F)
+            selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F),
+            selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T)
+            
           ),
           
           tabBox(
