@@ -32,7 +32,7 @@ dashboardPage(
       menuItem("Import", tabName = "import", icon = icon("file-o")),
       menuItem("Plotting", tabName = "plotting", icon = icon("bar-chart")),
       menuItem("Pre-processing", tabName = "preprocessing", icon = icon("cogs")),
-      menuItem("Segmenting", tabName = "segmenting", icon = icon("columns")),
+      menuItem("Segmentation", tabName = "segmentation", icon = icon("columns")),
       menuItem("Biclustering", tabName = "biclustering", icon = icon("th")),
       menuItem("About", tabName = "about", icon = icon("info-circle"))
     )
@@ -236,10 +236,10 @@ dashboardPage(
       
 
       ######################################################
-      ###################### segmenting ###################
+      ###################### segmentation ###################
       #####################################################
       tabItem(
-        tabName = 'segmenting',
+        tabName = 'segmentation',
         
         fluidRow(  
           uiOutput('segIndTabs'),
@@ -334,7 +334,7 @@ dashboardPage(
           )
         )
       ),
-      #</segmenting>
+      #</segmentation>
       
       
       ######################################################
@@ -353,7 +353,7 @@ dashboardPage(
                 box(
                   width = 12,
                   column(12,
-                    checkboxInput('baselineBiSeg', 'Segmentation', TRUE)
+                    checkboxInput('baselineBiSeg', 'Segmentation', FALSE)
                   ),
                   column(12,
                     selectInput('baselineBiMethod', 'Method', choices = c('BCCC','BCBimax'
@@ -363,13 +363,13 @@ dashboardPage(
                   conditionalPanel(
                     'input.baselineBiMethod == "BCCC"',
                     column(4,
-                      numericInput('baselineBiBCCCDelta', label="Delta", value=0.01)
+                      numericInput('baselineBiBCCCDelta', label="Delta", value=0.0001)
                     ),
                     column(4,
                       numericInput('baselineBiBCCCAlpha', label="Alpha", value=1)
                     ),
                     column(4,
-                      numericInput('baselineBiBCCCK', label="K", value=100)
+                      numericInput('baselineBiBCCCK', label="K", value=1)
                     )
                   ),
                   conditionalPanel(
@@ -405,6 +405,33 @@ dashboardPage(
                 )
               )
             )
+            
+            # ,
+            # tabPanel(
+            #   "PDF",
+            #   fluidRow(
+            #     box(
+            #       width = 12,
+            #       column(12,
+            #         checkboxInput('PDFBiSeg', 'Segmentation', TRUE),
+            #         tags$script(
+            #           '$("#PDFBiSeg").attr("disabled", true)'
+            #         )
+            #       ),
+            #       column(6,
+            #         # sliderInput('PDFBiDelta', "Delta",
+            #                    # min = 0, max = 1, value = 0.01)
+            #         numericInput('PDFBiDelta', label="Delta", value=0.01),
+            #         bsTooltip("PDFBiDelta", "Delta should be between (0,1).",
+            #                   "bottom")
+            #       ),
+            #       column(6,
+            #         numericInput('PDFBiK', label="K", value=10)
+            #       )
+            #     )
+            #   )
+            # )
+
             ,
             tabPanel(
               "BiclusTS",
@@ -412,48 +439,22 @@ dashboardPage(
                 box(
                   width = 12,
                   column(12,
-                    checkboxInput('PDFBiSeg', 'Segmentation', TRUE),
+                    checkboxInput('LSDDBiSeg', 'Segmentation', TRUE),
                     tags$script(
-                      '$("#PDFBiSeg").attr("disabled", true)'
+                      '$("#LSDDBiSeg").attr("disabled", true)'
                     )
                   ),
                   column(6,
-                    # sliderInput('PDFBiDelta', "Delta",
-                               # min = 0, max = 1, value = 0.01)
-                    numericInput('PDFBiDelta', label="Delta", value=0.01),
-                    bsTooltip("PDFBiDelta", "Delta should be between (0,1).",
-                              "bottom")
+                    numericInput('LSDDBiDelta', label="Delta", value=0.001),
+                    bsTooltip("LSDDBiDelta", "Delta should be between (0,1).",
+                              "bottom", options = list(container = "body"))
                   ),
                   column(6,
-                    numericInput('PDFBiK', label="K", value=10)
+                    numericInput('LSDDBiK', label="K", value=1)
                   )
                 )
               )
             )
-
-            # ,
-            # tabPanel(
-            #   "LSDD",
-            #   fluidRow(
-            #     box(
-            #       width = 12,
-            #       column(12,
-            #         checkboxInput('LSDDBiSeg', 'Segmentation', TRUE),
-            #         tags$script(
-            #           '$("#LSDDBiSeg").attr("disabled", true)'
-            #         )
-            #       ),
-            #       column(6,
-            #         numericInput('LSDDBiDelta', label="Delta", value=0.01),
-            #         bsTooltip("LSDDBiDelta", "Delta should be between (0,1).",
-            #                   "bottom", options = list(container = "body"))
-            #       ),
-            #       column(6,
-            #         numericInput('LSDDBiK', label="K", value=10)
-            #       )
-            #     )
-            #   )
-            # )
           ),
 
           box(
@@ -514,7 +515,7 @@ dashboardPage(
           box(
             title = "About",
             width = 12,
-            HTML('<p>Analysis Dashboard aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmenting and biclustering, which offer handy access of different methods and parameters applied to your data.</p>'),
+            HTML('<p>Analysis Dashboard aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmentation and biclustering, which offer handy access of different methods and parameters applied to your data.</p>'),
             HTML('<p>Author: Ricardo Cachucho <a href="mailto:r.cachucho@liacs.leidenuniv.nl">r.cachucho@liacs.leidenuniv.nl</a>, Kaihua liu <a href="mailto:k.liu.5@umail.leidenuniv.nl">k.liu.5@umail.leidenuniv.nl</a></p>')
           )
         )

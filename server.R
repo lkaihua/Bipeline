@@ -548,7 +548,7 @@ shinyServer(function(input, output, session) {
                         min = 0, max = 1, value = ifelse(is.null(tempO), 0.5, tempO)),
             
             sliderInput(paste0(i, "Threshold"), "Threshold input:",
-                        min = 0, max = 1, value = ifelse(is.null(tempT), 0.9, tempT)),
+                        min = 0, max = 1, value = ifelse(is.null(tempT), 0.75, tempT)),
             
             radioButtons(paste0(i, "Univariate"), "Variate type:",
                          tempUni, ifelse(is.null(tempU), 1, tempU), inline = T)
@@ -1025,10 +1025,10 @@ shinyServer(function(input, output, session) {
     if(func == "Baseline"){
       prefix <- "baselineBi"  
     }
-    else if(func == "BiclusTS"){
+    else if(func == "PDF"){
       prefix <- "PDFBi"  
     }
-    else if(func == "LSDD"){
+    else if(func == "BiclusTS"){
       prefix <- "LSDDBi"  
     }
     
@@ -1097,17 +1097,17 @@ shinyServer(function(input, output, session) {
         else if(prefix == "PDFBi"){
           fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
         }
-        # else if(prefix == "LSDDBi"){
-        #   # segments should contain sigma and lambda for LSDD
-        #   # make as list, since sigma and segStart could have different length
-        #   segments <- as.list(segments)
-        #   if(is.null(v$LSDDPars)){
-        #     return("NO Sigma & Lamba found for LSDD")
-        #   }
-        #   segments$sigma <- v$LSDDPars$sigma
-        #   segments$lambda <- v$LSDDPars$lambda
-        #   fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
-        # }
+        else if(prefix == "LSDDBi"){
+          # segments should contain sigma and lambda for LSDD
+          # make as list, since sigma and segStart could have different length
+          segments <- as.list(segments)
+          if(is.null(v$LSDDPars)){
+            return("NO Sigma & Lamba found for LSDD")
+          }
+          segments$sigma <- v$LSDDPars$sigma
+          segments$lambda <- v$LSDDPars$lambda
+          fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
+        }
       }
     )
 
