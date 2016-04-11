@@ -84,7 +84,7 @@ shinyServer(function(input, output, session) {
     
     # upload debug
     if(DEBUG_UPLOAD_ON){
-      d <- data.frame( read.csv('./data/test5000.csv'))  
+      d <- data.frame( read.csv('./data/dataset5000.csv'))  
       d <- d[sapply(d, is.numeric)]
       v$data <- d
       return(v$data)
@@ -723,9 +723,7 @@ shinyServer(function(input, output, session) {
     v$segparsPrev <- pars
     segThrottle <- isolate(input$segThrottle)
   
-    segLSDDPars <- data.frame(
-      row.names = c('sigma','lambda')
-    )
+    segLSDDPars <- data.frame()
     segLSDDUnion <- c()
     
     d <- isolate(v$data)
@@ -771,7 +769,8 @@ shinyServer(function(input, output, session) {
         # abline(v = LSDDResult$segEnd, col="red")
     
         # sigma/lambda are stable for one particular variable
-        segLSDDPars[col] <- as.numeric(c(LSDDResult$sigma, LSDDResult$lambda))
+        segLSDDPars[j,"sigma"] <- as.numeric(LSDDResult$sigma)
+        segLSDDPars[j,"lambda"] <- as.numeric(LSDDResult$lambda)
         segLSDDUnion <- c(segLSDDUnion, LSDDResult$segStart)
   
       }
@@ -796,8 +795,12 @@ shinyServer(function(input, output, session) {
                         )
 
     # for biclustering usage
-    v$segments <- segments
-    v$LSDDPars <- segLSDDPars
+    v$segments <- list(
+      segStart = segments$segStart,
+      segEnd = segments$segEnd,
+      sigma = segLSDDPars$sigma,
+      lambda = segLSDDPars$lambda
+    )
 
     # plotting union segment results
     plot(x=1:nrow(d), y=rep(1, nrow(d)), type="n",
@@ -818,7 +821,29 @@ shinyServer(function(input, output, session) {
       paste('segments-', Sys.time(), '.csv', sep='')
     },
     content = function(file) {
-      write.csv(v$segments, file, row.names=FALSE)
+      download <- v$segments
+      # segStart, segEnd  , l1
+      # sigma, lamba      , l2 <- nrow(v$data)
+      # fill the end of sigma/lamba with NA
+      l <- sapply(download, function(i){length(i)})
+      l1 <- max(l)
+      l2 <- ncol(v$data)
+      if(l1 > l2){
+        for(i in seq(from = l2+1, to=l1)){
+          download$sigma[i] <- NA
+          download$lambda[i] <- NA
+        }
+      }
+      
+      l1 <- min(l)
+      if(l1 < l2){
+        for(i in seq(from = l1+1, to=l2)){
+          download$segStart[i] <- NA
+          download$segEnd[i] <- NA
+        }
+      }
+      
+      write.csv(download, file, row.names=FALSE)
     }
   )
 
@@ -922,13 +947,11 @@ shinyServer(function(input, output, session) {
 
   if(DEBUG_SEGPLOT_ON){
     # for 5000 csv
-    v$segments <- data.frame(
+    v$segments <- list(
       segStart = c(1,391,631,1591,2071,2311,2551,3991,4711),
-      segEnd = c(390,630,1590,2070,2310,2550,3990,4710,5335)
-    )
-    v$LSDDPars <- data.frame(
-      sigma = c(0.25,2.625,0.25,0.25),
-      lambda = c(0.001,5.0005,0.001,0.003162)
+      segEnd = c(390,630,1590,2070,2310,2550,3990,4710,5335),
+      sigma = c(0.25,2.625,0.25,0.25, NA, NA, NA, NA, NA),
+      lambda = c(0.001,5.0005,0.001,0.003162, NA, NA, NA, NA, NA)
     )
   }
 
@@ -1098,14 +1121,6 @@ shinyServer(function(input, output, session) {
           fit <- PDFbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
         }
         else if(prefix == "LSDDBi"){
-          # segments should contain sigma and lambda for LSDD
-          # make as list, since sigma and segStart could have different length
-          segments <- as.list(segments)
-          if(is.null(v$LSDDPars)){
-            return("NO Sigma & Lamba found for LSDD")
-          }
-          segments$sigma <- v$LSDDPars$sigma
-          segments$lambda <- v$LSDDPars$lambda
           fit <- LSDDbiclustering(data=data, segments=segments, delta=pars$Delta, k=pars$K, progressBar=progressBar)
         }
       }

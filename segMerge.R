@@ -107,7 +107,7 @@ LSDDCompare <- function(L, G, R, data, segLSDDPars){
   # but LSDD requires at least 2 data points to carry on.
   # so just merge G to the shorter side
   if(
-    G$segEnd - G$segStart > 1 
+       G$segEnd - G$segStart > 1 
     && L$segEnd - L$segStart > 1   
     && R$segEnd - R$segStart > 1   
   ){
@@ -123,18 +123,16 @@ LSDDCompare <- function(L, G, R, data, segLSDDPars){
       sum_LSDD_G2L <- sum(sum_LSDD_G2L, LSDDfast(
         X1 = Gmatrix, 
         X2 = Lmatrix,
-        sigma = segLSDDPars["sigma", i],    #sigma
-        lambda = segLSDDPars["lambda", i]   #lambda
-      )
-      )
+        sigma = segLSDDPars[i, "sigma"],    #sigma
+        lambda = segLSDDPars[i, "lambda"]   #lambda
+      ))
       
       sum_LSDD_G2R <- sum(sum_LSDD_G2R, LSDDfast(
         X1 = Gmatrix, 
         X2 = Rmatrix,
-        sigma = segLSDDPars["sigma", i],    #sigma
-        lambda = segLSDDPars["lambda", i]   #lambda
-      )
-      )
+        sigma = segLSDDPars[i, "sigma"],    #sigma
+        lambda = segLSDDPars[i, "lambda"]   #lambda
+      ))
     }
   }
   
