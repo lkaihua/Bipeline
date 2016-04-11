@@ -17,7 +17,7 @@ source('LSDDsegmentation.R')
 source('segMerge.R')
 source('baselineBiclustering.R')
 source('PDFbiclustering.R')
-# source('LSDDbiclustering.R')
+source('LSDDbiclustering.R')
 
 # change maximum file size from 5MB to 100MB
 options(shiny.maxRequestSize = 100*1024^2)

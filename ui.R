@@ -263,7 +263,7 @@ dashboardPage(
           ),
           box(
             width = 4,
-            numericInput('segThrottle', label="Minimum Segment Size", value=100)
+            numericInput('segThrottle', label="Minimum Segment Size", value=2)
             ,
             icon("info-circle"),"Shorter segments will be merged."
           ),
