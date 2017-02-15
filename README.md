@@ -1,16 +1,13 @@
 # Bipeline
 
-Bipeline: A Web-Based Visualization Tool for Biclustering of Multivariate Time Series, ECML-PKDD 2016
-
-http://link.springer.com/chapter/10.1007/978-3-319-46131-1_3
+[Bipeline: A Web-Based Visualization Tool for Biclustering of Multivariate Time Series, ECML-PKDD 2016](http://link.springer.com/chapter/10.1007/978-3-319-46131-1_3)
 
 Author: Ricardo Cachucho(r.cachucho@liacs.leidenuniv.nl), Kaihua Liu(k.liu.5@umail.leidenuniv.nl)
 
 **Bipeline is online now**: http://fr.liacs.nl:7000/
 
-
+--
 Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset *uploading*, *plotting*, *pre-processing*, *segmenting* and *biclustering*, which offer handy access of different methods and parameters applied to your data.
-
 ![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
 
 
@@ -44,12 +41,12 @@ In *multi-plotting* tab, each of selected variables is plotted in an individual 
 ![pre-processing](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/pre-processing.png)
 
 Raw data often requires error handling such as: 
-* Exclude variables; 
-* Normalization;
-* Conditions, to remove or replace conditional data lines; 
-* Outlier Removal, as shown above: selecting data points that are furthest away from the average, as candidates to be removed. 
+* `Exclude variables`; 
+* `Normalization`;
+* `Conditions`: to remove or replace conditional data lines; 
+* `Outlier Removal` as shown above: selecting data points that are furthest away from the average, as candidates to be removed. 
 
-Users could execute iterative process of `*plotting* <==> *pre-processing*` until the data is ready, then export pre-processed data to local disks by clicking *Save* button, or continue moving to *segementation* and *biclustering*.
+Users could execute iterative process of *plotting* <==> *pre-processing* until the data is ready, then export pre-processed data to local disks by clicking *Save* button, or continue moving to *segementation* and *biclustering*.
 
 ### Segmentation ###
 
@@ -63,8 +60,26 @@ The minimum segment size is customizable, and the tool will merge short segments
 Segmentation results could be saved \& loaded, which is useful when users have finished segmentation step and they can directly jump to biclustering step by loading previous saved segmentation files. These results will be used in the following biclustering step by default, however, user could disable that in baseline biclustering methods by unchecking corresponding option.
 
 
-### Biclustering ###
+### Biclustering
 
 ![biclustering](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/biclustering.png)
+
+
+A number of biclustering algorithms are intergrated:
+* `Baseline`: Extensible R *biclust* methods, e.g. BCCC. 
+* `Segmentation + Baseline`: Use segmentation results to generate biclusters. Baseline biclustering has a very fast calculation speed. But this method has problem of capturing distributions.
+* `Segmentation + BiclusTS`: A novel algorithm *BiclusTS* is introduced to overcome above problem, which captures similarity by differences in the distribution within each segment by means of *LSDD*. 
+
+
+All biclusters are plotted in coloring blocks, as shown above. Users could filter bicluster names in a multi-select menu, and the plot will respond with realtime update. 
+
+The right side of the plots are density distributions, in which red curves stand for selected biclusters and black for all data points. 
+
+### Visualization Features
+
+Features of visualization shared by both \textit{Segmentation} and \textit{Biclustering} panel are as follows:
+* Plots and parameter tables in experiments will be kept in history and hence users could navigate backwards and forwards to compare for optimized parameters. 
+* Progress bar will appear to show current progress percent when backend server busy carrying out calculation.
+* Interactive web components could be saved into images with one-click by means of application of Javascript/Canvas technologies without any external server resources.
 
 
