@@ -7,9 +7,9 @@ Author: Ricardo Cachucho(r.cachucho@liacs.leidenuniv.nl), Kaihua Liu(k.liu.5@uma
 **Bipeline is online now**: http://fr.liacs.nl:7000/
 
 --
-Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset *uploading*, *plotting*, *pre-processing*, *segmenting* and *biclustering*, which offer handy access of different methods and parameters applied to your data.
-![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
 
+![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
+Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset *uploading*, *plotting*, *pre-processing*, *segmenting* and *biclustering*, which offer handy access of different methods and parameters applied to your data.
 
 ## Abstract
 
@@ -18,7 +18,7 @@ Large amounts of multivariate time series data are being generated every day. Un
 
 Here, we present Bipeline, a web-based visualization tool that provides both experts and non-experts with a pipeline for experimenting with multivariate time series biclustering. With Bipeline, it is straightforward to save experiments and try different biclustering algorithms, enabling users to intuitively go from pre-processing to visual analysis of biclusters.
 
-## Stages
+## Panels
 
 ### Importing
 
@@ -73,13 +73,13 @@ A number of biclustering algorithms are intergrated:
 
 All biclusters are plotted in coloring blocks, as shown above. Users could filter bicluster names in a multi-select menu, and the plot will respond with realtime update. 
 
-The right side of the plots are density distributions, in which red curves stand for selected biclusters and black for all data points. 
+*Density distributions* are at the right side of plots, in which red curves stand for selected biclusters and black for all data points. 
 
 ### Visualization Features
 
-Features of visualization shared by both \textit{Segmentation} and \textit{Biclustering} panel are as follows:
-* Plots and parameter tables in experiments will be kept in history and hence users could navigate backwards and forwards to compare for optimized parameters. 
-* Progress bar will appear to show current progress percent when backend server busy carrying out calculation.
-* Interactive web components could be saved into images with one-click by means of application of Javascript/Canvas technologies without any external server resources.
+* Plots and parameters throughout all experiments will be kept in history. And hence users could navigate backwards and forwards for optimization of parameters. 
+* A progress bar showing current progress percent will appear when backend server is busy carrying out calculation.
+* Interactive web components could be saved into images by one click. It is implemented with Javascript and Canvas technologies and thus does not require external server resources.
+
 
 
