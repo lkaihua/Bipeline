@@ -11,6 +11,9 @@ Bipeline is online now: http://http://fr.liacs.nl:7000/
 
 Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmenting and biclustering, which offer handy access of different methods and parameters applied to your data.
 
+![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
+
+
 ## Abstract
 
 Large amounts of multivariate time series data are being generated every day. Understanding this data and finding patterns in it is a contemporary task. To find prominent patterns present in multivariate time series, one can use biclustering, that is looking for patterns both in subsets of variables that show coherent behavior and in a number of time periods. For this, an experimental tool is needed.
@@ -20,8 +23,6 @@ Here, we present Bipeline, a web-based visualization tool that provides both exp
 
 ## Interface
 
-![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
-
 ![plotting](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/plotting.png)
 
 ![pre-processing](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/pre-processing.png)
@@ -29,3 +30,5 @@ Here, we present Bipeline, a web-based visualization tool that provides both exp
 ![segmentation](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/segmentation.png)
 
 ![biclustering](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/biclustering.png)
+
+
