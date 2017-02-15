@@ -21,7 +21,7 @@ fileName2 <- "shinyjsBi.js"
 jsCode2 <- readChar(fileName2, file.info(fileName2)$size)
 
 dashboardPage(
-  dashboardHeader(title = "Analysis Dashboard"),
+  dashboardHeader(title = "Bipeline"),
   dashboardSidebar(
     # change dashboard sidebar appearance
     shinyjs::inlineCSS(list(
@@ -131,8 +131,8 @@ dashboardPage(
           box(
             width = 8,
             title = "Options",
-            selectInput('plotX', 'X Varaible', choices = c('Please select a dataset'), multiple = F),
-            selectInput('plotY', 'Y Varaible(s)', choices = c('Please select a dataset'), multiple = T)
+            selectInput('plotX', 'X variable', choices = c('Please select a dataset'), multiple = F),
+            selectInput('plotY', 'Y variable(s)', choices = c('Please select a dataset'), multiple = T)
             
           ),
           
@@ -277,12 +277,14 @@ dashboardPage(
             bsButton('segButton', label = 'Start', style="primary")
             ,
 
-            div(
-              style="float:right",
+            # div(
+              # style="float:right",
+            tags$hr(),
+            
               downloadButton("segresultSave", label = "Save Segments"),
               bsButton('segresultImport', label = 'Using Saved Segments', icon = icon("upload"), type="toggle")
 
-            )
+            # )
             ,
             conditionalPanel("input.segresultImport",
               div(
@@ -515,7 +517,7 @@ dashboardPage(
           box(
             title = "About",
             width = 12,
-            HTML('<p>Analysis Dashboard aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmentation and biclustering, which offer handy access of different methods and parameters applied to your data.</p>'),
+            HTML('<p>Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset uploading, plotting, pre-processing, segmentation and biclustering, which offer handy access of different methods and parameters applied to your data.</p>'),
             HTML('<p>Author: Ricardo Cachucho <a href="mailto:r.cachucho@liacs.leidenuniv.nl">r.cachucho@liacs.leidenuniv.nl</a>, Kaihua liu <a href="mailto:k.liu.5@umail.leidenuniv.nl">k.liu.5@umail.leidenuniv.nl</a></p>')
           )
         )
