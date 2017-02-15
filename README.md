@@ -79,7 +79,7 @@ All biclusters are plotted in coloring blocks, as shown above. Users could filte
 
 * Plots and parameters throughout all experiments will be kept in history. And hence users could navigate backwards and forwards for optimization of parameters. 
 * A progress bar showing current progress percent will appear when backend server is busy carrying out calculation.
-* Interactive web components could be saved into images by one click. It is implemented with Javascript and Canvas technologies and thus does not require external server resources.
+* A screenshot of interactive web components could be saved by one click. It is implemented with Javascript and Canvas technologies and thus does not require external server resources.
 
 
 
