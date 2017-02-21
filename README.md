@@ -26,14 +26,14 @@ Users could upload dataset and view details with a data table and summary info, 
 
 ### Plotting
 
+![plotting](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/plotting.png)
+
 It's often of high importance to have a visual inspection of the raw time series first before digging into details. Plotting panel includes *plotting*, *multi-plotting* and *correlation* tab. 
 
 An interactive plotting R package dygraphs *dygraphs* is implemented instead of traditional static image plotting, which allows part of time series to be selected for zooming in. Zoom in/out functionality is one of the most desired characteristics of visual inspection tools for large time series dataset. 
 
 In *multi-plotting* tab, each of selected variables is plotted in an individual dygraphs plot, and zoom in/out of any of them will be synchronized across all plots. Correlation tab uses simple linear regression to plot a fit line for selected *X* and *Y* variables.
 
-
-![plotting](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/plotting.png)
 
 
 ### Pre-processing
