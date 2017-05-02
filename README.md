@@ -9,7 +9,6 @@ Author: Ricardo Cachucho(r.cachucho@liacs.leidenuniv.nl), Kaihua Liu(k.liu.5@uma
 --
 
 ![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
-Bipeline aims to provide toolkits to explore datasets in a visualized way, especially for time-series datasets. It includes dataset *uploading*, *plotting*, *pre-processing*, *segmenting* and *biclustering*, which offer handy access of different methods and parameters applied to your data.
 
 ## Abstract
 
