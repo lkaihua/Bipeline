@@ -4,11 +4,14 @@
 
 Author: Ricardo Cachucho(r.cachucho@liacs.leidenuniv.nl), Kaihua Liu(k.liu.5@umail.leidenuniv.nl)
 
-**Bipeline is online now**: http://fr.liacs.nl:7000/
+|Modules|
+|-------|
+|![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)|
 
---
+|Pre-processing|Segmentation|Bi-clustering|
+|---|---|---|
+| ![pre-processing](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/pre-processing.png)  | ![segmentation](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/segmentation.png)  |  ![biclustering](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/biclustering.png) |
 
-![modules](https://raw.githubusercontent.com/kainliu/Bipeline/master/screenshot/modules.png)
 
 ## Abstract
 
